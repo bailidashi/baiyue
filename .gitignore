@@ -1,0 +1,4 @@
+memory/
+__pycache__/
+*.pyc
+.env

@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>百约教程 · 从零搭建QQ AI机器人</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-start: #E8F3EC;
+  --bg-end: #D4E8DA;
+  --green-accent: #2F855A;
+  --green-light: #57B68C;
+  --text-dark: #1A2E24;
+  --text-dim: #406653;
+  --glass: rgba(235, 248, 235, 0.65);
+  --code-bg: rgba(30, 46, 36, 0.06);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: radial-gradient(ellipse at 30% 40%, var(--bg-start), var(--bg-end));
+  font-family: 'Inter', sans-serif;
+  color: var(--text-dark);
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+header {
+  text-align: center;
+  padding: 3rem 0 2rem;
+}
+header h1 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--green-accent);
+  margin-bottom: 0.5rem;
+}
+header p {
+  color: var(--text-dim);
+  font-size: 1rem;
+}
+.back-link {
+  display: inline-block;
+  margin-bottom: 1rem;
+  color: var(--green-accent);
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+.back-link:hover { text-decoration: underline; }
+
+/* Cards */
+.card {
+  background: var(--glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(80, 120, 90, 0.15);
+  border-radius: 24px;
+  padding: 2rem 2.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.04);
+}
+.card h2 {
+  font-size: 1.4rem;
+  color: var(--green-accent);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.card h3 {
+  font-size: 1.1rem;
+  color: var(--text-dark);
+  margin: 1.5rem 0 0.5rem;
+}
+.card p, .card li {
+  line-height: 1.8;
+  color: var(--text-dim);
+}
+.card ul { padding-left: 1.5rem; }
+.card li { margin-bottom: 0.3rem; }
+
+/* Code blocks */
+pre {
+  background: rgba(26, 46, 36, 0.85);
+  color: #c8e6d0;
+  border-radius: 14px;
+  padding: 1.2rem 1.5rem;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  line-height: 1.7;
+  margin: 1rem 0;
+}
+
+code {
+  background: var(--code-bg);
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+}
+
+/* Table */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.9rem;
+}
+th, td {
+  padding: 0.7rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(80,120,90,0.1);
+}
+th { color: var(--green-accent); font-weight: 600; }
+td { color: var(--text-dim); }
+
+/* Tags */
+.tag {
+  display: inline-block;
+  background: rgba(47,133,90,0.12);
+  border-radius: 20px;
+  padding: 0.2rem 0.8rem;
+  font-size: 0.75rem;
+  color: var(--green-accent);
+  margin: 0.2rem;
+}
+
+.arch-diagram {
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  color: var(--green-accent);
+  line-height: 2.2;
+  padding: 1.5rem;
+  background: rgba(47,133,90,0.05);
+  border-radius: 16px;
+  margin: 1rem 0;
+}
+
+footer {
+  text-align: center;
+  padding: 3rem 0;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+footer a { color: var(--green-accent); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <a href="index.html" class="back-link">← 回到主页</a>
+  <h1>🤖 从零搭建你的 QQ AI 机器人</h1>
+  <p>百约 · BaiYue 完整教程 — Python + NapCatQQ + DeepSeek</p>
+  <p style="margin-top:0.5rem;">
+    <span class="tag">Python 3.12</span>
+    <span class="tag">NapCatQQ</span>
+    <span class="tag">DeepSeek API</span>
+    <span class="tag">OneBot v11</span>
+    <span class="tag">WebSocket</span>
+  </p>
+</header>
+
+<!-- 原理 -->
+<div class="card">
+  <h2>🧠 原理：你的机器人是怎么运行的</h2>
+  <div class="arch-diagram">
+    你在QQ发消息<br>
+    &nbsp;&nbsp;↓<br>
+    NapCatQQ 拦截消息 → 通过 WebSocket 转发给 Python<br>
+    &nbsp;&nbsp;↓<br>
+    Python 把消息发给 DeepSeek（AI大脑）<br>
+    &nbsp;&nbsp;↓<br>
+    DeepSeek 生成回复 → Python 发回 NapCat → QQ<br>
+    &nbsp;&nbsp;↓<br>
+    你看到回复
+  </div>
+  <table>
+    <tr><th>角色</th><th>负责什么</th></tr>
+    <tr><td><strong>NapCatQQ</strong></td><td>翻译官。把QQ消息翻译成Python能读的JSON格式</td></tr>
+    <tr><td><strong>Python程序</strong></td><td>中间人。收消息、调AI、发回复</td></tr>
+    <tr><td><strong>DeepSeek API</strong></td><td>大脑。真正"说话"的那个</td></tr>
+  </table>
+</div>
+
+<!-- 第一步 -->
+<div class="card">
+  <h2>📦 第一步：安装 Python</h2>
+  <ol style="color:var(--text-dim); line-height:2;">
+    <li>打开 <a href="https://python.org" style="color:var(--green-accent)">python.org</a>，下载 Python 3.12.x</li>
+    <li>安装时<strong>勾选 "Add Python to PATH"</strong></li>
+    <li>验证：<code>python --version</code> 应显示 Python 3.12.x</li>
+    <li>装依赖：<code>python -m pip install websockets requests</code></li>
+  </ol>
+</div>
+
+<!-- 第二步 -->
+<div class="card">
+  <h2>🔌 第二步：安装 NapCatQQ</h2>
+  <ol style="color:var(--text-dim); line-height:2;">
+    <li>下载：<a href="https://github.com/NapNeko/NapCatQQ/releases" style="color:var(--green-accent)">github.com/NapNeko/NapCatQQ/releases</a></li>
+    <li>下载 <code>NapCat.Shell.zip</code>，解压到某目录（如 D:\NapCat）</li>
+    <li>双击 <code>NapCatWinBootMain.exe</code></li>
+    <li>弹出二维码 → 用手机QQ（机器人号）扫码登录</li>
+    <li>验证：浏览器打开 <code>http://127.0.0.1:3000/get_status</code>，看到 <code>"online":true</code></li>
+  </ol>
+</div>
+
+<!-- 第三步 -->
+<div class="card">
+  <h2>🔑 第三步：获取 DeepSeek API Key</h2>
+  <ol style="color:var(--text-dim); line-height:2;">
+    <li>打开 <a href="https://platform.deepseek.com" style="color:var(--green-accent)">platform.deepseek.com</a></li>
+    <li>注册 → API Keys → 创建 Key → 复制保存</li>
+    <li>充值 10 块钱，够用几个月</li>
+  </ol>
+  <p style="margin-top:0.5rem; font-size:0.85rem;">
+    💰 <strong>费用参考：</strong>聊100条约0.3元，聊一个月不到20块。
+  </p>
+</div>
+
+<!-- 第四步 -->
+<div class="card">
+  <h2>💻 第四步：写代码</h2>
+  <p>完整代码在 <a href="https://github.com/bailidashi/bailidashi.github.io" style="color:var(--green-accent)">GitHub</a>，核心结构：</p>
+  <pre>bot.py
+├── 配置（API Key / QQ号 / 端口）
+├── 人格设定（女友模式 / 助手模式）
+├── AI大脑（调 DeepSeek API）
+├── QQ收发（通过 NapCat HTTP API）
+├── 记忆系统（每人一个JSON文件）
+├── 表情翻译（CQ码 ↔ 文字表情）
+└── WebSocket 服务器（收消息）</pre>
+</div>
+
+<!-- 第五步 -->
+<div class="card">
+  <h2>🔗 第五步：配置 NapCat WebSocket</h2>
+  <ol style="color:var(--text-dim); line-height:2;">
+    <li>浏览器打开 NapCat WebUI（<code>http://127.0.0.1:6099/webui?token=你的Token</code>）</li>
+    <li>「网络配置」→「WebSocket客户端」→「添加」</li>
+    <li>名称：随便填 | URL：<code>ws://127.0.0.1:8001</code></li>
+    <li>保存</li>
+  </ol>
+</div>
+
+<!-- 第六步 -->
+<div class="card">
+  <h2>🚀 第六步：启动</h2>
+  <pre>python bot.py</pre>
+  <p>看到 <code>NapCat 已连接</code> 就成功了！去 QQ 上给机器人发消息试试。</p>
+</div>
+
+<!-- 常见问题 -->
+<div class="card">
+  <h2>🩺 常见问题</h2>
+  <table>
+    <tr><th>现象</th><th>原因</th><th>解决</th></tr>
+    <tr><td>连不上 NapCat</td><td>NapCat 没启动/QQ没登录</td><td>先启动NapCat扫码</td></tr>
+    <tr><td>不回消息</td><td>WebSocket没配好</td><td>检查WebUI的WS地址</td></tr>
+    <tr><td>端口占用</td><td>旧机器人没关</td><td>任务管理器杀python.exe</td></tr>
+    <tr><td>回复很慢</td><td>DeepSeek服务器忙</td><td>正常，等一下</td></tr>
+    <tr><td>回复像客服</td><td>人格设定太弱</td><td>改 system_prompt 函数</td></tr>
+  </table>
+</div>
+
+<!-- 进阶 -->
+<div class="card">
+  <h2>🎨 进阶：自定义人格</h2>
+  <p>改 bot.py 里的 <code>get_system_prompt</code> 函数：</p>
+  <pre>def get_system_prompt(is_owner, name):
+    if is_owner:
+        return f"""这是对你（主人）的人格设定。
+        性格、说话风格、口头禅，越具体越像真的"""
+    else:
+        return """对其他人的人格设定。"""</pre>
+
+  <h3>人格示例</h3>
+  <pre style="font-size:0.78rem;"># 高冷猫娘
+"你是一只猫娘，用喵结尾，高冷但对主人粘人喵。对陌生人冷淡。"
+
+# 热血兄弟
+"你是死党，热血笨蛋类型。永远支持他，会骂醒迷茫的他。"
+
+# 毒舌吐槽役
+"毒舌AI，幽默吐槽一切。不伤人，善于发现逻辑漏洞，偶尔自黑。"</pre>
+</div>
+
+<!-- 表情包 -->
+<div class="card">
+  <h2>😎 进阶：让机器人能发表情</h2>
+  <p>百约内置了表情翻译系统：</p>
+  <ul>
+    <li><strong>收</strong>：QQ表情 <code>[CQ:face,id=66]</code> → 翻译成 <code>[爱心]</code> 给AI看</li>
+    <li><strong>发</strong>：AI回复 <code>[爱心]</code> → 翻译回 <code>[CQ:face,id=66]</code> 发到QQ</li>
+  </ul>
+  <p style="margin-top:0.8rem;">可在人格设定中告诉它这些表情：</p>
+  <div style="font-size:0.85rem; color:var(--text-dim);">
+    [爱心] [笑哭] [呲牙] [调皮] [偷笑] [坏笑] [酷] [好的] [吃瓜] [点赞] [抱拳] [玫瑰] [发呆] [亲亲] [害羞] [无语] [叹气]
+  </div>
+</div>
+
+<div class="card">
+  <h2>📂 项目文件</h2>
+  <p style="color:var(--text-dim);">
+    完整源码 + 教程：<a href="https://github.com/bailidashi/bailidashi.github.io" style="color:var(--green-accent)">github.com/bailidashi/bailidashi.github.io</a>
+  </p>
+</div>
+
+<footer>
+  <p>百裏 © 2026 · 跟拍档 Claude Code 一起写的</p>
+  <p style="margin-top:0.3rem;"><a href="index.html">← 回到主页</a></p>
+</footer>
+
+</div>
+</body>
+</html>
