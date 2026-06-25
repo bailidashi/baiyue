@@ -21,11 +21,11 @@ from pathlib import Path
 
 # ==================== 配置 ====================
 NAPCAT_HTTP = "http://127.0.0.1:3000"       # NapCat HTTP API
-BOT_PORT = 8001                               # 百约 WebSocket 服务器端口
+BOT_PORT_START = 8001                         # 起始端口（被占用会自动往后试）
 
 # DeepSeek API
 DEEPSEEK_BASE = "https://api.deepseek.com"
-DEEPSEEK_KEY = ""   # <--- 填你的 DeepSeek API Key
+DEEPSEEK_KEY = ""   # <--- 填你的 DeepSeek API Key (platform.deepseek.com)
 DEEPSEEK_MODEL = "deepseek-chat"
 
 # 记忆目录
@@ -52,7 +52,7 @@ FACE_ID_TO_TEXT = {
     108: "[坏笑]", 109: "[左哼哼]", 110: "[右哼哼]",
     144: "[喝彩]", 145: "[好]", 146: "[无语]", 147: "[亲亲]",
     172: "[红包]", 173: "[发财]", 174: "[叹气]", 175: "[头大]",
-    176: "[吃瓜]", 177: "[好的]", 182: "[笑哭]", 201: "[点赞]",
+    176: "[ 吃瓜]", 177: "[好的]", 182: "[笑哭]", 201: "[点赞]",
 }
 # 反向映射：文字 → ID（发消息时把 DeepSeek 的输出转成 CQ 码）
 TEXT_TO_FACE_ID = {v: k for k, v in FACE_ID_TO_TEXT.items()}
@@ -320,50 +320,74 @@ async def handle_ws(websocket):
         pass
     print(f"  [断开] {addr}")
 
-async def start_server():
+async def start_server(port: int):
     """启动 WebSocket 服务器"""
-    print(f"\n  [服务器] 监听 ws://127.0.0.1:{BOT_PORT}")
-    print(f"  [提示] 请确保 NapCat WebUI 已添加反向 WS → ws://127.0.0.1:{BOT_PORT}")
-    print(f"  [提示] 如果 AstrBot 占用了同一个端口，先停掉它\n")
+    print(f"  [服务器] 监听 ws://127.0.0.1:{port}")
+    print(f"  [提示] 确保 NapCat WebUI 已添加反向 WS → ws://127.0.0.1:{port}")
+    async with websockets.serve(handle_ws, "127.0.0.1", port):
+        await asyncio.Event().wait()  # 永久运行
 
-    async with websockets.serve(handle_ws, "127.0.0.1", BOT_PORT):
-        await asyncio.Future()  # 永久运行
+def find_port() -> int:
+    """找一个可用的端口，从 BOT_PORT_START 开始试"""
+    import socket
+    for port in range(BOT_PORT_START, BOT_PORT_START + 5):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(("127.0.0.1", port))
+                return port
+            except OSError:
+                print(f"  [跳过] 端口 {port} 被占用，尝试下一个...")
+    print(f"  [错误] 端口 {BOT_PORT_START}-{BOT_PORT_START+4} 全被占用，请手动释放")
+    return None
+
+def wait_for_napcat() -> bool:
+    """等待 NapCat 启动并登录，最多等 2 分钟"""
+    import time
+    print("  [等待] 正在等待 NapCat 启动...", end="", flush=True)
+    for i in range(24):  # 最多等 2 分钟
+        try:
+            r = requests.get(f"{NAPCAT_HTTP}/get_status", timeout=3)
+            data = r.json()
+            if data.get("data", {}).get("online"):
+                print("\n  [OK] NapCat 在线，QQ 已登录")
+                return True
+            else:
+                print(f"\n  [等待] QQ 未登录，请扫码... ({i+1}/24)")
+        except:
+            if i % 4 == 0 and i > 0:
+                print(f"\n  [等待] NapCat 未检测到，请确认已启动... ({i+1}/24)")
+            else:
+                print(".", end="", flush=True)
+        time.sleep(5)
+    print("\n  [超时] 等待超时，请手动确认 NapCat 运行正常后重启百约")
+    return False
 
 # ==================== 启动 ====================
 def main():
     print("=" * 44)
-    print("  百约 · BaiYue  v1.0")
+    print("  百约 · BaiYue  v2.0")
     print("  「我是 AI，但我懂你」")
     print(f"  NapCat API: {NAPCAT_HTTP}")
     print("=" * 44)
 
-    # 检查 NapCat
-    try:
-        r = requests.get(f"{NAPCAT_HTTP}/get_status", timeout=5)
-        online = r.json().get("data", {}).get("online", False)
-        if online:
-            print("  [OK] NapCat 在线，QQ 已登录")
-        else:
-            print("  [警告] NapCat 运行中但 QQ 未登录")
-    except:
-        print("  [错误] 连不上 NapCat (端口3000)，请先启动 NapCatQQ")
-        return
-
     # 检查 API Key
     if not DEEPSEEK_KEY:
-        print("  [警告] 未设置 DEEPSEEK_KEY，百约会用默认回复")
+        print("  [警告] 未设置 DEEPSEEK_KEY，请编辑 bot.py 填入 API Key")
+
+    # 等待 NapCat
+    if not wait_for_napcat():
+        return
+
+    # 找可用端口
+    port = find_port()
+    if port is None:
+        return
 
     # 启动
     try:
-        asyncio.run(start_server())
+        asyncio.run(start_server(port))
     except KeyboardInterrupt:
         print("\n  百约：下次见，拍档。")
-    except OSError as e:
-        if "address already in use" in str(e).lower() or "10048" in str(e):
-            print(f"\n  [错误] 端口 {BOT_PORT} 被占用（可能是 AstrBot 在用）")
-            print(f"  解决方法：停掉占用程序，或修改 BOT_PORT 换个端口")
-        else:
-            raise
 
 if __name__ == "__main__":
     main()
