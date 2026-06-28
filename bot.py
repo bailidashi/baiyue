@@ -32,7 +32,7 @@ DEEPSEEK_MODEL = "deepseek-chat"
 MEMORY_DIR = Path(__file__).parent / "memory"
 MEMORY_DIR.mkdir(exist_ok=True)
 
-OWNER_QQ = "3154997545"  # 百裏的 QQ 号——只有他是男朋友
+OWNER_QQ = ""  # 改成你自己的 QQ 号（机器人会对这个号用女友模式）
 
 # ==================== QQ 表情包翻译 ====================
 # QQ 表情 ID → 文字描述（收消息时翻译给 DeepSeek 看）
