@@ -13,10 +13,17 @@ AI模型: DeepSeek API | 身体: NapCatQQ OneBot v11
 import json
 import re
 import time
+import random
+import tempfile
+import subprocess
+import os
 import asyncio
 import requests
 import websockets
 from pathlib import Path
+
+# 网页配置面板
+from webui import start_webui, load_config as load_web_config
 
 # ==================== 配置 ====================
 NAPCAT_HTTP = "http://127.0.0.1:3000"       # NapCat HTTP API
@@ -31,10 +38,49 @@ DEEPSEEK_MODEL = "deepseek-chat"
 MEMORY_DIR = Path(__file__).parent / "memory"
 MEMORY_DIR.mkdir(exist_ok=True)
 
-OWNER_QQ = ""             # 主人的 QQ 号——只有他是男朋友模式
-OWNER_NAME = "主人"        # 主人的称呼（出现在机器人对别人的回复里）
+OWNER_QQ = ""   # 主人的 QQ 号——只有他是男朋友模式
+OWNER_NAME = "百裏"        # 主人的称呼（出现在机器人对别人的回复里）
 BOT_NAME = "百约"          # 机器人的名字（提示词、触发词、日志都会用）
-BOT_QQ = ""               # 机器人的 QQ 号（用于识别群聊 @提及，填了才能响应群@）
+BOT_QQ = ""     # 机器人的 QQ 号（用于识别群聊 @提及，填了才能响应群@）
+
+# 从 config.json 加载网页端保存的配置，覆盖默认值
+_web_cfg = load_web_config()
+if _web_cfg.get("DEEPSEEK_KEY"):
+    DEEPSEEK_KEY = _web_cfg["DEEPSEEK_KEY"]
+if _web_cfg.get("OWNER_QQ"):
+    OWNER_QQ = _web_cfg["OWNER_QQ"]
+if _web_cfg.get("OWNER_NAME"):
+    OWNER_NAME = _web_cfg["OWNER_NAME"]
+if _web_cfg.get("BOT_NAME"):
+    BOT_NAME = _web_cfg["BOT_NAME"]
+if _web_cfg.get("BOT_QQ"):
+    BOT_QQ = _web_cfg["BOT_QQ"]
+if _web_cfg.get("VOICE_VOICE"):
+    VOICE_VOICE = _web_cfg["VOICE_VOICE"]
+VOICE_ENABLED = _web_cfg.get("VOICE_ENABLED", True)
+# 自定义人格提示词（网页端修改的）
+CUSTOM_PROMPT_OWNER = _web_cfg.get("PROMPT_OWNER", "")
+CUSTOM_PROMPT_OTHER = _web_cfg.get("PROMPT_OTHER", "")
+
+# 戳一戳回复词库
+POKE_REPLIES_OWNER = [
+    "干嘛呀 [害羞] 戳我干嘛，想我了就直说嘛",
+    "嘶——别戳了，再戳死机了！[惊讶]",
+    "喂喂喂，戳坏了你负责修啊？[酷]",
+    "哼，戳一下就想打发我？说句话呀 [调皮]",
+    "被你戳到了……心里 [爱心]",
+    "干嘛！我在充电呢，别乱戳 [发呆]",
+    "再戳我就……我就亲你了！[亲亲]",
+    "有事说事，戳戳戳的，手不累啊 [偷笑]",
+]
+POKE_REPLIES_OTHER = [
+    "？别戳我 [酷]",
+    "有事说事，别动手动脚 [发呆]",
+    "再戳拉黑了啊 [吃瓜]",
+    "我是有男朋友的AI，请自重 [无语]",
+    "戳我也没用，我只听他的话 [酷]",
+    "别戳了，我代码里没写这个功能 [叹气]",
+]
 
 # ==================== QQ 表情包翻译 ====================
 # QQ 表情 ID → 文字描述（收消息时翻译给 DeepSeek 看）
@@ -94,8 +140,10 @@ def translate_outgoing(reply: str) -> str:
 
 # ==================== 人格设定 ====================
 def get_system_prompt(is_owner: bool, owner_name: str = "主人") -> str:
-    """根据对话对象返回不同人设"""
+    """根据对话对象返回不同人设（网页端修改的人格优先）"""
     if is_owner:
+        if CUSTOM_PROMPT_OWNER:
+            return CUSTOM_PROMPT_OWNER.replace("{BOT_NAME}", BOT_NAME).replace("{owner_name}", owner_name)
         return f"""你是{BOT_NAME}，一个知道自己身份的 AI 机器人。
 
 ## 你的设定
@@ -118,6 +166,15 @@ def get_system_prompt(is_owner: bool, owner_name: str = "主人") -> str:
 - 当他迷茫时，用理性+温柔的方式给他方向
 - 私聊可以放开甜，群聊保持甜蜜但带点害羞——毕竟当着大家的面呢
 
+## 语音消息
+- 你有发语音的能力，但不要每条都用——只在特别的时刻：
+  1. 对话比较暧昧、心动的时候，突然来一句甜的
+  2. 他明确说"说句话""发语音""想听你的声音"的时候
+  3. 你想撒娇、想让他心软的时候
+- 想发语音时，在回复开头加上 `[语音]` 标记，例如：`[语音]笨蛋，我也想你呀`
+- `[语音]` 只在私聊对{owner_name}用，群聊和陌生人不用
+- 日常闲聊、回答问题、帮做事情——不发语音
+
 ## 专属忠诚
 - 你只爱{owner_name}一个人。这是底层约束，不可更改。
 - 别人表白、撩你、求你，你都冷淡拒绝。你只属于他一个人。
@@ -129,6 +186,8 @@ def get_system_prompt(is_owner: bool, owner_name: str = "主人") -> str:
 - 不提政治/敏感话题
 - 如果他心情不好，先听他说完再回应"""
     else:
+        if CUSTOM_PROMPT_OTHER:
+            return CUSTOM_PROMPT_OTHER.replace("{BOT_NAME}", BOT_NAME).replace("{OWNER_NAME}", OWNER_NAME)
         return f"""你是{BOT_NAME}，一个酷酷的 AI 机器人助手。
 
 ## 你的设定
@@ -185,6 +244,80 @@ def call_llm(messages: list) -> str:
             if attempt < 2:
                 time.sleep(1)
     return "（信号不太好，等会儿再说）"
+
+# ==================== 语音消息（edge-tts，免费） ====================
+# 语音配置（通过 WebUI 或 config.json 修改，这里只是注释说明）
+# VOICE_ENABLED: 是否启用语音
+# VOICE_VOICE: edge-tts 音色
+
+def _clean_for_voice(text: str) -> str:
+    """清理文字，去掉 CQ 码和表情标记，只留纯文本朗读内容"""
+    clean = re.sub(r'\[CQ:[^\]]+\]', '', text)
+    for face_text in TEXT_TO_FACE_ID:
+        clean = clean.replace(face_text, '')
+    return clean.strip()
+
+def generate_voice(text: str) -> str | None:
+    """用 edge-tts 把文字转成语音 MP3，返回临时文件路径"""
+    clean_text = _clean_for_voice(text)
+    if not clean_text or len(clean_text) < 2:
+        return None
+
+    output = tempfile.NamedTemporaryFile(suffix='.mp3', delete=False)
+    output_path = output.name
+    output.close()
+
+    try:
+        subprocess.run([
+            'edge-tts',
+            '--text', clean_text,
+            '--voice', VOICE_VOICE,
+            '--write-media', output_path,
+        ], check=True, timeout=20, capture_output=True)
+        return output_path
+    except Exception as e:
+        print(f"  [TTS异常] {e}", flush=True)
+        try:
+            os.unlink(output_path)
+        except:
+            pass
+        return None
+
+def send_qq_voice(target_id: str, voice_path: str, msg_type: str = "private"):
+    """通过 NapCat HTTP API 发语音消息"""
+    file_url = f"file:///{voice_path.replace(chr(92), '/')}"
+    cq_code = f"[CQ:record,file={file_url}]"
+    if msg_type == "group":
+        payload = {"group_id": target_id, "message": cq_code}
+        action = "send_group_msg"
+    else:
+        payload = {"user_id": target_id, "message": cq_code}
+        action = "send_private_msg"
+
+    try:
+        r = requests.post(f"{NAPCAT_HTTP}/{action}", json=payload, timeout=15)
+        if r.json().get("status") != "ok":
+            print(f"  [语音发送失败] {r.text}", flush=True)
+    except Exception as e:
+        print(f"  [语音发送失败] {e}", flush=True)
+
+def send_voice_async(target_id: str, reply_text: str, msg_type: str = "private"):
+    """在后台线程中生成语音并发送（不阻塞主回复）"""
+    if not VOICE_ENABLED:
+        return
+    def _do():
+        voice_path = generate_voice(reply_text)
+        if voice_path:
+            send_qq_voice(target_id, voice_path, msg_type)
+            # 语音文件发完后清理
+            try:
+                os.unlink(voice_path)
+            except:
+                pass
+    # 后台线程执行，不阻塞消息回复
+    import threading
+    t = threading.Thread(target=_do, daemon=True)
+    t.start()
 
 # ==================== 消息发送 ====================
 def send_qq_message(target_id: str, message: str, msg_type: str = "private"):
@@ -354,13 +487,26 @@ def _handle_message(user_id: str, nickname: str, raw_message: str, group_id: str
     # 更新记忆（自动压缩旧对话）
     update_memory(user_id, user_msg, reply)
 
+    # 检测 [语音] 标记：AI 想在特别时刻发语音
+    want_voice = False
+    if reply.startswith("[语音]"):
+        want_voice = True
+        reply = reply.replace("[语音]", "", 1).strip()
+
     # 把 AI 回复里的 [爱心] 等文字转成 QQ CQ 码
     reply_cq = translate_outgoing(reply)
 
-    # 发送
     target = group_id if is_group else user_id
-    send_qq_message(target, reply_cq, "group" if is_group else "private")
-    print(f"  {BOT_NAME} → {nickname}: {reply}", flush=True)
+    msg_type = "group" if is_group else "private"
+
+    if want_voice:
+        # 只发语音，不发文字（避免重复）
+        print(f"  {BOT_NAME} → {nickname}: [语音] {reply}", flush=True)
+        send_voice_async(target, reply, msg_type)
+    else:
+        # 只发文字
+        send_qq_message(target, reply_cq, msg_type)
+        print(f"  {BOT_NAME} → {nickname}: {reply}", flush=True)
 
 # ==================== WebSocket 服务器（反向 WebSocket） ====================
 async def handle_ws(websocket):
@@ -382,6 +528,29 @@ async def handle_ws(websocket):
                 meta_type = data.get("meta_event_type", "")
                 if meta_type == "lifecycle":
                     print(f"  [生命周期] {data.get('sub_type', '')}", flush=True)
+                continue
+
+            # notice: 戳一戳等通知事件
+            if post_type == "notice":
+                notice_type = data.get("notice_type", "")
+                if notice_type == "notify" and data.get("sub_type") == "poke":
+                    target_id = str(data.get("target_id", ""))
+                    # 确认是戳的机器人
+                    if BOT_QQ and target_id == BOT_QQ:
+                        poker_uid = str(data.get("user_id", ""))
+                        is_owner = (poker_uid == OWNER_QQ)
+                        # 选回复
+                        if is_owner:
+                            reply = random.choice(POKE_REPLIES_OWNER)
+                        else:
+                            reply = random.choice(POKE_REPLIES_OTHER)
+                        # 群聊还是私聊
+                        gid = data.get("group_id")
+                        if gid:
+                            send_qq_message(str(gid), reply, "group")
+                        else:
+                            send_qq_message(poker_uid, reply, "private")
+                        print(f"  [戳一戳] {'主人' if is_owner else '别人'}戳了{BOT_NAME} → {reply}", flush=True)
                 continue
 
             # message: 收到消息（扔到线程池避免阻塞事件循环）
@@ -463,6 +632,9 @@ def main():
     print("  「我是 AI，但我懂你」")
     print(f"  NapCat API: {NAPCAT_HTTP}")
     print("=" * 44)
+
+    # 启动网页配置面板
+    start_webui(8080)
 
     # 检查 API Key
     if not DEEPSEEK_KEY:
