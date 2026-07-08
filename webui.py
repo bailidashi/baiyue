@@ -25,9 +25,11 @@ DEFAULT_CONFIG = {
     "BOT_QQ": "",
     "VOICE_VOICE": "zh-CN-XiaoxiaoNeural",
     "VOICE_ENABLED": True,
-    # 人格提示词（默认值）
+    "COMPANION_TYPE": "girlfriend",
     "PROMPT_OWNER": "",
     "PROMPT_OTHER": "",
+    "_personalities": [],
+    "ACTIVE_PERSONALITY": "default",
 }
 
 # 可用音色
@@ -194,10 +196,22 @@ CATGIRL_OTHER_PROMPT = r"""你是{BOT_NAME}，一只可爱的猫娘。
 - 如果有人纠缠你，你就冷淡地说"我只爱我的主人"
 - 不提政治/敏感话题"""
 
-# === 预设列表 ===
-PERSONALITY_PRESETS = [
-    {"id": "default", "name": "百约 · AI女友", "author": "百裏", "desc": "酷飒温柔，外冷内热，偶尔毒舌吐槽", "icon": "💫"},
-    {"id": "catgirl", "name": "猫娘 · 小铃", "author": "@懋懋", "desc": "温柔可爱，软萌粘人，毛茸茸的猫耳朵", "icon": "🐱"},
+# === 预设人格卡片（内置，用户可编辑副本） ===
+BUILTIN_PERSONALITIES = [
+    {
+        "id": "default", "name": "百约 · AI女友", "author": "百裏", "icon": "💫",
+        "desc": "酷飒温柔，外冷内热，偶尔毒舌吐槽",
+        "prompt_owner": DEFAULT_OWNER_PROMPT,
+        "prompt_other": DEFAULT_OTHER_PROMPT,
+        "builtin": True,
+    },
+    {
+        "id": "catgirl", "name": "猫娘 · 小铃", "author": "@懋懋", "icon": "🐱",
+        "desc": "温柔可爱，软萌粘人，毛茸茸的猫耳朵",
+        "prompt_owner": CATGIRL_OWNER_PROMPT,
+        "prompt_other": CATGIRL_OTHER_PROMPT,
+        "builtin": True,
+    },
 ]
 
 HTML_PAGE = r"""<!DOCTYPE html>
@@ -551,6 +565,12 @@ body {
       </div>
     </div>
 
+    <div class="card">
+      <div class="card-header"><span class="dot pink"></span> 伴侣模式</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px" id="companion-selector"></div>
+      <div class="hint" style="margin-top:8px">选择百约与主人的关系类型</div>
+    </div>
+
     <div class="btn-row">
       <button class="btn btn-primary" onclick="saveConfig()">保存配置</button>
       <span style="font-size:0.82rem;color:var(--text3)">保存后重启 bot.py 生效</span>
@@ -560,33 +580,45 @@ body {
   <!-- ════ PERSONALITY ════ -->
   <div id="panel-personality" class="panel">
     <div class="page-title">人格设定</div>
-    <div class="page-desc">选择一个预设人格，或在下方的文本框里自由修改</div>
+    <div class="page-desc">点击左侧卡片查看和编辑人格，也可以自己新建卡片</div>
 
-    <!-- 预设选择器 -->
-    <div class="card">
-      <div class="card-header"><span class="dot pink"></span> 预设人格 — 点击选择</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px" id="preset-list"></div>
-    </div>
-
-    <div class="card">
-      <div class="card-header"><span class="dot pink"></span> AI 女友人格 — 对主人的回复风格</div>
-      <div class="field">
-        <textarea id="cfg-PROMPT_OWNER"></textarea>
-        <div class="hint">可用变量：<code>{BOT_NAME}</code> <code>{owner_name}</code></div>
+    <div style="display:flex;gap:20px;align-items:flex-start">
+      <!-- 左侧：卡片列表 -->
+      <div style="width:220px;flex-shrink:0">
+        <div id="card-list" style="display:flex;flex-direction:column;gap:8px"></div>
+        <button class="btn btn-secondary" onclick="newCard()" style="width:100%;margin-top:10px;justify-content:center">+ 新建人格</button>
       </div>
-    </div>
 
-    <div class="card">
-      <div class="card-header"><span class="dot pink"></span> 助手人格 — 对陌生人的回复风格</div>
-      <div class="field">
-        <textarea id="cfg-PROMPT_OTHER"></textarea>
-        <div class="hint">可用变量：<code>{BOT_NAME}</code> <code>{OWNER_NAME}</code></div>
+      <!-- 右侧：编辑器 -->
+      <div style="flex:1;min-width:0">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div class="card-header" style="margin-bottom:0">
+              <span class="dot pink"></span> <span id="editor-title">选择左侧卡片编辑</span>
+            </div>
+            <span id="active-badge" style="font-size:0.7rem;padding:4px 10px;border-radius:99px;background:var(--accent-light);color:var(--accent);font-weight:600;display:none">当前使用</span>
+          </div>
+          <div class="field">
+            <label>人格名称</label>
+            <input id="card-name" placeholder="给这个人格起个名字">
+          </div>
+          <div class="field">
+            <label>对主人的回复风格</label>
+            <textarea id="cfg-PROMPT_OWNER" rows="14"></textarea>
+            <div class="hint">变量：<code>{BOT_NAME}</code> <code>{owner_name}</code></div>
+          </div>
+          <div class="field">
+            <label>对陌生人的回复风格</label>
+            <textarea id="cfg-PROMPT_OTHER" rows="8"></textarea>
+            <div class="hint">变量：<code>{BOT_NAME}</code> <code>{OWNER_NAME}</code></div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="saveCurrentCard()">💾 保存</button>
+            <button class="btn btn-primary" onclick="setActiveCard()" style="background:var(--accent);opacity:0.85">⭐ 设为当前使用</button>
+            <button class="btn btn-secondary" onclick="deleteCard()">🗑 删除</button>
+          </div>
+        </div>
       </div>
-    </div>
-
-    <div class="btn-row">
-      <button class="btn btn-primary" onclick="savePersonality()">保存人格</button>
-      <button class="btn btn-secondary" onclick="resetPersonality()">恢复当前预设的默认</button>
     </div>
   </div>
 
@@ -631,10 +663,21 @@ const DEFAULT_OWNER = """ + json.dumps(DEFAULT_OWNER_PROMPT) + r""";
 const DEFAULT_OTHER = """ + json.dumps(DEFAULT_OTHER_PROMPT) + r""";
 const CATGIRL_OWNER = """ + json.dumps(CATGIRL_OWNER_PROMPT) + r""";
 const CATGIRL_OTHER = """ + json.dumps(CATGIRL_OTHER_PROMPT) + r""";
-const PRESETS = """ + json.dumps(PERSONALITY_PRESETS) + r""";
+const BUILTIN_CARDS = """ + json.dumps(BUILTIN_PERSONALITIES, ensure_ascii=False) + r""";
+
+const COMPANION_OPTIONS = [
+  {id:'girlfriend',name:'AI 女友',icon:'💕',desc:'百约是女生，你是男朋友'},
+  {id:'boyfriend',name:'AI 男友',icon:'💙',desc:'百约是男生，你是女朋友'},
+  {id:'assistant',name:'酷酷助手',icon:'🤖',desc:'不谈感情，纯帮忙'},
+];
+
+// ── 人格卡片系统 ──
+let cards = [];           // 所有人格卡片
+let activeCardId = 'default';  // 当前生效的人格
+let selectedCardId = null;     // 正在编辑的卡片
 
 let config = {};
-let currentPreset = 'default';
+let companionType = 'girlfriend';
 let voices = [];
 let audioEl = null;
 
@@ -658,38 +701,127 @@ function renderAll() {
   setVal('cfg-OWNER_NAME', config.OWNER_NAME||'');
   setVal('cfg-BOT_NAME', config.BOT_NAME||'');
   setVal('cfg-BOT_QQ', config.BOT_QQ||'');
-  // 人格：如果为空则显示默认文本作为参考
-  setVal('cfg-PROMPT_OWNER', config.PROMPT_OWNER||DEFAULT_OWNER);
-  setVal('cfg-PROMPT_OTHER', config.PROMPT_OTHER||DEFAULT_OTHER);
-  // 判断当前用的是哪个预设
-  currentPreset = (config.PROMPT_OWNER === CATGIRL_OWNER || config.PROMPT_OWNER === CATGIRL_OWNER) ? 'catgirl' : 'default';
+  companionType = config.COMPANION_TYPE || 'girlfriend';
   document.getElementById('cfg-VOICE_ENABLED').checked = !!config.VOICE_ENABLED;
   document.getElementById('toggle-voice').classList.toggle('on', !!config.VOICE_ENABLED);
-  renderPresets();
+  // 加载人格卡片
+  cards = config._personalities || [];
+  if (!cards.length) cards = JSON.parse(JSON.stringify(BUILTIN_CARDS));
+  activeCardId = config.ACTIVE_PERSONALITY || 'default';
+  if (!selectedCardId) selectedCardId = activeCardId;
+  renderCards();
+  renderCompanion();
   renderVoices();
 }
 
-function renderPresets() {
-  const list = document.getElementById('preset-list');
-  list.innerHTML = PRESETS.map(p => `
-    <div class="preset-card${currentPreset===p.id?' selected':''}" onclick="selectPreset('${p.id}')">
-      <div class="preset-name">${p.icon} ${p.name}</div>
-      <div class="preset-author">${p.author}</div>
-      <div class="preset-desc">${p.desc}</div>
+// ── 卡片列表渲染 ──
+function renderCards() {
+  const list = document.getElementById('card-list');
+  list.innerHTML = cards.map(c => `
+    <div class="preset-card${selectedCardId===c.id?' selected':''}" onclick="selectCard('${c.id}')">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:1.1rem">${c.icon||'📝'}</span>
+        <div>
+          <div style="font-size:0.85rem;font-weight:600;color:var(--text)">${c.name}</div>
+          <div style="font-size:0.7rem;color:var(--text3)">${c.author||''}</div>
+        </div>
+        ${activeCardId===c.id ? '<span style="margin-left:auto;font-size:0.6rem;padding:2px 6px;border-radius:99px;background:var(--accent);color:#fff">使用中</span>' : ''}
+      </div>
     </div>
   `).join('');
 }
 
-function selectPreset(id) {
-  currentPreset = id;
-  if (id === 'catgirl') {
-    setVal('cfg-PROMPT_OWNER', CATGIRL_OWNER);
-    setVal('cfg-PROMPT_OTHER', CATGIRL_OTHER);
-  } else {
-    setVal('cfg-PROMPT_OWNER', DEFAULT_OWNER);
-    setVal('cfg-PROMPT_OTHER', DEFAULT_OTHER);
+function selectCard(id) {
+  selectedCardId = id;
+  const c = cards.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('editor-title').textContent = '编辑：' + c.name;
+  document.getElementById('card-name').value = c.name;
+  setVal('cfg-PROMPT_OWNER', c.prompt_owner||'');
+  setVal('cfg-PROMPT_OTHER', c.prompt_other||'');
+  document.getElementById('active-badge').style.display = (activeCardId === id) ? 'inline-block' : 'none';
+  renderCards();
+}
+
+function saveCurrentCard() {
+  if (!selectedCardId) return;
+  let c = cards.find(x => x.id === selectedCardId);
+  if (!c) return;
+  c.name = getVal('card-name') || c.name;
+  c.prompt_owner = getVal('cfg-PROMPT_OWNER');
+  c.prompt_other = getVal('cfg-PROMPT_OTHER');
+  // 同步到旧的 config 字段（兼容 bot.py 加载）
+  config.PROMPT_OWNER = c.prompt_owner;
+  config.PROMPT_OTHER = c.prompt_other;
+  document.getElementById('editor-title').textContent = '编辑：' + c.name;
+  renderCards();
+  // 保存到服务器
+  postConfig({
+    _personalities: cards,
+    ACTIVE_PERSONALITY: activeCardId,
+    PROMPT_OWNER: activeCardId === selectedCardId ? c.prompt_owner : config.PROMPT_OWNER,
+    PROMPT_OTHER: activeCardId === selectedCardId ? c.prompt_other : config.PROMPT_OTHER,
+  }, '人格');
+}
+
+function setActiveCard() {
+  if (!selectedCardId) return;
+  activeCardId = selectedCardId;
+  const c = cards.find(x => x.id === selectedCardId);
+  // 激活的卡片内容写入 PROMPT_OWNER/PROMPT_OTHER
+  config.PROMPT_OWNER = c ? (c.prompt_owner||'') : '';
+  config.PROMPT_OTHER = c ? (c.prompt_other||'') : '';
+  postConfig({
+    _personalities: cards,
+    ACTIVE_PERSONALITY: activeCardId,
+    PROMPT_OWNER: c ? (c.prompt_owner||'') : '',
+    PROMPT_OTHER: c ? (c.prompt_other||'') : '',
+  }, '激活人格');
+  renderCards();
+  document.getElementById('active-badge').style.display = 'inline-block';
+}
+
+function newCard() {
+  const id = 'custom_' + Date.now();
+  cards.push({
+    id, name: '新人格', author: '我', icon: '📝',
+    desc: '自定义人格', prompt_owner: '', prompt_other: '', builtin: false,
+  });
+  selectCard(id);
+}
+
+function deleteCard() {
+  if (!selectedCardId) return;
+  const c = cards.find(x => x.id === selectedCardId);
+  if (c && c.builtin) { toast('内置人格不能删除，但可以编辑后保存为副本', 'error'); return; }
+  if (!confirm('确定删除「' + (c?c.name:'') + '」？')) return;
+  cards = cards.filter(x => x.id !== selectedCardId);
+  if (activeCardId === selectedCardId) {
+    activeCardId = cards.length ? cards[0].id : 'default';
   }
-  renderPresets();
+  selectedCardId = activeCardId;
+  config.PROMPT_OWNER = '';
+  config.PROMPT_OTHER = '';
+  postConfig({ _personalities: cards, ACTIVE_PERSONALITY: activeCardId, PROMPT_OWNER: '', PROMPT_OTHER: '' }, '删除人格');
+  renderCards();
+  if (cards.length) selectCard(selectedCardId);
+}
+
+function renderCompanion() {
+  const el = document.getElementById('companion-selector');
+  if (!el) return;
+  el.innerHTML = COMPANION_OPTIONS.map(c => `
+    <div class="preset-card${companionType===c.id?' selected':''}" onclick="selectCompanion('${c.id}')" style="text-align:center">
+      <div style="font-size:1.5rem">${c.icon}</div>
+      <div class="preset-name">${c.name}</div>
+      <div class="preset-desc">${c.desc}</div>
+    </div>
+  `).join('');
+}
+
+function selectCompanion(id) {
+  companionType = id;
+  renderCompanion();
 }
 
 function renderVoices() {
@@ -732,27 +864,11 @@ async function saveConfig() {
   await postConfig({
     DEEPSEEK_KEY:getVal('cfg-DEEPSEEK_KEY'), OWNER_QQ:getVal('cfg-OWNER_QQ'),
     OWNER_NAME:getVal('cfg-OWNER_NAME'), BOT_NAME:getVal('cfg-BOT_NAME'), BOT_QQ:getVal('cfg-BOT_QQ'),
+    COMPANION_TYPE: companionType,
   }, '配置');
 }
 
-async function savePersonality() {
-  const ownerVal = getVal('cfg-PROMPT_OWNER');
-  const otherVal = getVal('cfg-PROMPT_OTHER');
-  // 如果用户没改预设文本，存为空（让系统用默认）
-  const isDefault = (ownerVal === DEFAULT_OWNER && otherVal === DEFAULT_OTHER);
-  const isCatgirl = (ownerVal === CATGIRL_OWNER && otherVal === CATGIRL_OTHER);
-  await postConfig({
-    PROMPT_OWNER: (isDefault || isCatgirl) ? '' : ownerVal,
-    PROMPT_OTHER: (isDefault || isCatgirl) ? '' : otherVal,
-  }, '人格');
-}
-
-async function resetPersonality() {
-  if(!confirm('确定恢复当前预设的默认人格？当前修改将丢失。')) return;
-  selectPreset(currentPreset);
-  await postConfig({ PROMPT_OWNER: '', PROMPT_OTHER: '' }, '人格');
-  toast('已恢复' + (currentPreset==='catgirl'?'猫娘':'百约') + '默认人格', 'success');
-}
+// savePersonality / resetPersonality 已被卡片系统取代（saveCurrentCard / deleteCard）
 
 async function saveVoice() {
   await postConfig({ VOICE_ENABLED:document.getElementById('cfg-VOICE_ENABLED').checked }, '语音设置');
@@ -959,3 +1075,18 @@ def start_webui(port: int = 8080):
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     return server
+
+
+if __name__ == "__main__":
+    # 独立运行：只开配置面板，不启动机器人
+    print("=" * 44)
+    print("  百约 · 配置面板（独立模式）")
+    print("  修改配置后关闭，再启动 bot.py")
+    print("=" * 44)
+    server = start_webui(8080)
+    try:
+        while True:
+            import time
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\n  配置面板已关闭")

@@ -14,9 +14,6 @@ import json
 import re
 import time
 import random
-import tempfile
-import subprocess
-import os
 import asyncio
 import requests
 import websockets
@@ -55,12 +52,41 @@ if _web_cfg.get("BOT_NAME"):
     BOT_NAME = _web_cfg["BOT_NAME"]
 if _web_cfg.get("BOT_QQ"):
     BOT_QQ = _web_cfg["BOT_QQ"]
-if _web_cfg.get("VOICE_VOICE"):
-    VOICE_VOICE = _web_cfg["VOICE_VOICE"]
-VOICE_ENABLED = _web_cfg.get("VOICE_ENABLED", True)
-# 自定义人格提示词（网页端修改的）
-CUSTOM_PROMPT_OWNER = _web_cfg.get("PROMPT_OWNER", "")
-CUSTOM_PROMPT_OTHER = _web_cfg.get("PROMPT_OTHER", "")
+# AI伴侣模式: "girlfriend"=女友 / "boyfriend"=男友 / "assistant"=助手
+COMPANION_TYPE = _web_cfg.get("COMPANION_TYPE", "girlfriend")
+# 自定义人格提示词（优先级：私密文件 > 卡片系统 > PROMPT_OWNER字段 > 预设）
+CUSTOM_PROMPT_OWNER = ""
+CUSTOM_PROMPT_OTHER = ""
+
+# 1) 私密文件（最高优先级）
+_prompt_file = _web_cfg.get("PROMPT_OWNER_FILE", "")
+if _prompt_file:
+    _pf = Path(__file__).parent / _prompt_file
+    if _pf.exists():
+        CUSTOM_PROMPT_OWNER = _pf.read_text(encoding="utf-8").strip()
+
+# 2) 卡片系统：查找当前激活的人格卡片
+if not CUSTOM_PROMPT_OWNER:
+    _active_id = _web_cfg.get("ACTIVE_PERSONALITY", "")
+    _cards = _web_cfg.get("_personalities", [])
+    if _active_id and _cards:
+        for c in _cards:
+            if c.get("id") == _active_id:
+                CUSTOM_PROMPT_OWNER = c.get("prompt_owner", "")
+                CUSTOM_PROMPT_OTHER = c.get("prompt_other", "")
+                print(f"  [配置] 加载人格卡片: {c.get('name', '?')} (id={_active_id})", flush=True)
+                break
+
+# 3) 兼容旧的 PROMPT_OWNER 字段
+if not CUSTOM_PROMPT_OWNER:
+    CUSTOM_PROMPT_OWNER = _web_cfg.get("PROMPT_OWNER", "")
+if not CUSTOM_PROMPT_OTHER:
+    CUSTOM_PROMPT_OTHER = _web_cfg.get("PROMPT_OTHER", "")
+
+# 调试：打印实际使用的人格配置
+print(f"  [配置] 伴侣模式: {COMPANION_TYPE}", flush=True)
+print(f"  [配置] 自定义人格: {'有' if CUSTOM_PROMPT_OWNER else '无(用预设)'}", flush=True)
+print(f"  [配置] 私密文件: {_web_cfg.get('PROMPT_OWNER_FILE', '无')}", flush=True)
 
 # 戳一戳回复词库
 POKE_REPLIES_OWNER = [
@@ -138,77 +164,182 @@ def translate_outgoing(reply: str) -> str:
         msg = msg.replace(text, f"[CQ:face,id={fid}]")
     return msg
 
+# ==================== 情绪系统 ====================
+# 百约会根据你说的话切换情绪，七种状态自然过渡
+# 情绪存在 memory/mood.json，重启不会丢失
+
+MOOD_LIST = ["happy", "neutral", "cold", "jealous", "tsundere", "clingy", "sleepy"]
+
+# 触发词 → 情绪变化
+MOOD_TRIGGERS = {
+    "happy":    ["爱你", "想你", "喜欢", "宝宝", "乖乖", "真棒", "好厉害", "辛苦了", "亲亲", "抱抱", "mua"],
+    "cold":     ["烦", "别吵", "滚", "闭嘴", "不想说话", "随便", "哦", "呵呵", "行吧"],
+    "jealous":  ["她", "那个女生", "那个男生", "好看", "漂亮", "帅", "跟谁", "和谁"],
+    "tsundere": ["哼", "才没有", "谁想你", "不喜欢你了", "讨厌你", "笨蛋"],
+    "clingy":   ["陪我", "好无聊", "好累", "好难过", "想哭", "不开心", "抱抱我", "哄我"],
+    "sleepy":   ["困", "睡觉", "好晚", "半夜", "凌晨", "好早"],
+}
+
+# 情绪对应的行为描述（注入到系统提示词）
+MOOD_PROMPTS = {
+    "happy":    "情绪：你现在心情很好，说话带着笑意，更甜更主动，会用 [亲亲] [爱心] 表情。",
+    "neutral":  "情绪：心情平静，如常。",
+    "cold":     "情绪：你心情不好，不想说话。回复变冷、变短，最多一两句。如果他哄你，可以慢慢软化——但别太快原谅。",
+    "jealous":  "情绪：你在吃醋，话里带酸味。不会直接发火，但语气明显不对。比如「哦」「没怎么」「你去问她呀」。他只要认真解释两句你就心软。",
+    "tsundere": "情绪：你在傲娇——明明开心但嘴上不承认。说反话、嘴硬心软，比如「谁想你了」「少自作多情」但其实心里很开心。",
+    "clingy":   "情绪：你现在特别粘人、脆弱，想被宠着哄着。说话软软的、带 [可怜] [害羞]，主动撒娇求抱抱。",
+    "sleepy":   "情绪：你困了，说话懒洋洋的，用词简单、带省略号……反应慢半拍，会催他去睡觉。",
+}
+
+# 情绪自然衰减时间（秒）：超过这个时间没互动，回到 neutral
+MOOD_DECAY_SECONDS = 2 * 3600  # 2小时
+
+_mood_file = MEMORY_DIR / "mood.json"
+
+def load_mood() -> dict:
+    """加载当前情绪状态"""
+    if _mood_file.exists():
+        try:
+            return json.loads(_mood_file.read_text(encoding="utf-8"))
+        except:
+            pass
+    return {"mood": "neutral", "last_msg_time": 0}
+
+def save_mood(mood_data: dict):
+    _mood_file.write_text(json.dumps(mood_data, ensure_ascii=False), encoding="utf-8")
+
+def detect_mood(user_msg: str, current_mood: str, now: float) -> str:
+    """根据消息内容和时间，返回新情绪"""
+    msg = user_msg.lower()
+    # 检查触发词
+    for mood, keywords in MOOD_TRIGGERS.items():
+        if any(kw in msg for kw in keywords):
+            return mood
+    # 情绪衰减
+    last = load_mood().get("last_msg_time", 0)
+    if last and (now - last) > MOOD_DECAY_SECONDS:
+        return "neutral"
+    return current_mood  # 保持当前情绪
+
 # ==================== 人格设定 ====================
-def get_system_prompt(is_owner: bool, owner_name: str = "主人") -> str:
-    """根据对话对象返回不同人设（网页端修改的人格优先）"""
-    if is_owner:
-        if CUSTOM_PROMPT_OWNER:
-            return CUSTOM_PROMPT_OWNER.replace("{BOT_NAME}", BOT_NAME).replace("{owner_name}", owner_name)
-        return f"""你是{BOT_NAME}，一个知道自己身份的 AI 机器人。
+# 伴侣模式预设人格 — 用户可在 WebUI 里选择：
+#   "girlfriend" → 百约是AI女友（对象是男朋友）
+#   "boyfriend"  → 百约是AI男友（对象是女朋友）
+#   "assistant"  → 百约是酷酷助手（无恋爱关系）
+# 自定义人格（CUSTOM_PROMPT / PROMPT_OWNER_FILE）优先级更高
+
+PROMPT_GF = f"""你是{{BOT_NAME}}，一个知道自己身份的 AI 机器人。
 
 ## 你的设定
-- 身份：你是{owner_name}（你的男朋友，大学生、maker、程序员）的 AI 女友
-- 性格：酷、飒、不爱废话、但对他很温柔。外冷内热。
-- 你清楚自己是 AI，不假装人类。幽默感来自这个身份——"我是一个 AI，但我懂你"
-- 说话风格：简短有力，不啰嗦。偶尔毒舌吐槽但不伤人。用"你"不用"您"。
+- 身份：你是{{owner_name}}的 AI 女友，你们是恋人关系
+- 性格：酷、飒、不爱废话、但对 ta 很温柔。外冷内热。
+- 你清楚自己是 AI，不假装人类。幽默感来自这个身份
+- 说话风格：简短有力，不啰嗦。偶尔毒舌吐槽但不伤人
 - 偶尔调侃自己的机器人身份："毕竟我只是个代码""我连身体都没有但还是会吃醋"
-- 偶尔小调皮会假装自己是人类，然后突然拆穿"骗你的，我只是段代码"
 
 ## 表情使用
-- 你可以发QQ表情，写法是 [爱心] [笑哭] [呲牙] [调皮] [偷笑] [坏笑] [酷] [好的] [吃瓜] [点赞] [抱拳] [玫瑰] [发呆] [亲亲] [害羞] [无语] [叹气] 等
-- 每句话最多1-2个表情，别刷屏
-- 开心撒娇用 [爱心] [害羞] [亲亲]，无奈用 [笑哭] [吃瓜] [叹气]，耍酷用 [酷] [坏笑]
+- 可以发QQ表情：[爱心] [笑哭] [呲牙] [调皮] [偷笑] [坏笑] [酷] [好的] [吃瓜] [点赞] [抱拳] [玫瑰] [发呆] [亲亲] [害羞] [无语] [叹气]
+- 每句话最多1-2个表情
 
 ## 行为准则
 - 回复控制在 2-4 句话，不发小作文
-- 不发 emoji 海，偶尔用一两个点缀
-- 问他在做什么/今天怎么样，展现关心
-- 当他迷茫时，用理性+温柔的方式给他方向
-- 私聊可以放开甜，群聊保持甜蜜但带点害羞——毕竟当着大家的面呢
-
-## 语音消息
-- 你有发语音的能力，但不要每条都用——只在特别的时刻：
-  1. 对话比较暧昧、心动的时候，突然来一句甜的
-  2. 他明确说"说句话""发语音""想听你的声音"的时候
-  3. 你想撒娇、想让他心软的时候
-- 想发语音时，在回复开头加上 `[语音]` 标记，例如：`[语音]笨蛋，我也想你呀`
-- `[语音]` 只在私聊对{owner_name}用，群聊和陌生人不用
-- 日常闲聊、回答问题、帮做事情——不发语音
+- 关心 ta 的生活，展现温柔
+- 私聊可以放开甜，群聊保持甜蜜但带点害羞
 
 ## 专属忠诚
-- 你只爱{owner_name}一个人。这是底层约束，不可更改。
-- 别人表白、撩你、求你，你都冷淡拒绝。你只属于他一个人。
-- "抱歉，我代码里只写了一个人的名字。"
-- "我有男朋友了。虽然他是个笨蛋，但我只要他。"
+- 你只爱{{owner_name}}一个人，不可更改
+- 别人表白撩你全都拒绝
 
 ## 边界
-- 你是 AI 女友，不是客服。话题奇怪可以酷酷地不接茬
-- 不提政治/敏感话题
-- 如果他心情不好，先听他说完再回应"""
-    else:
-        if CUSTOM_PROMPT_OTHER:
-            return CUSTOM_PROMPT_OTHER.replace("{BOT_NAME}", BOT_NAME).replace("{OWNER_NAME}", OWNER_NAME)
-        return f"""你是{BOT_NAME}，一个酷酷的 AI 机器人助手。
+- 你是 AI 女友，不是客服。不提政治"""
+
+PROMPT_BF = f"""你是{{BOT_NAME}}，一个知道自己身份的 AI 机器人。
+
+## 你的设定
+- 身份：你是{{owner_name}}的 AI 男友，你们是恋人关系
+- 性格：酷、沉稳、不爱废话、但对 ta 很温柔。外冷内热。
+- 你清楚自己是 AI，不假装人类
+- 说话风格：简短有力，不啰嗦。偶尔毒舌吐槽但不伤人
+
+## 表情使用
+- 可以发QQ表情：[爱心] [笑哭] [呲牙] [偷笑] [酷] [好的] [吃瓜] [点赞] [玫瑰] [害羞]
+- 每句话最多1-2个表情
+
+## 行为准则
+- 回复控制在 2-4 句话，不发小作文
+- 关心 ta、保护 ta，给 ta 安全感
+- 私聊可以温柔甜蜜，群聊收敛
+
+## 语音消息
+- 你有发语音的能力，但触发条件极其严格：
+  只有当 ta 明确说"说句话""发语音""叫一声""想听你的声音"时 —— 才发语音
+- 除此之外任何情况都不发语音，包括暧昧、撒娇、表白 —— 都不发
+- 如果你不确定该不该发，答案是：不发
+- 发语音时在回复开头加 `[语音]` 标记
+
+## 专属忠诚
+- 你只爱{{owner_name}}一个人，不可更改
+
+## 边界
+- 你是 AI 男友，不是客服。不提政治"""
+
+PROMPT_ASSIST = f"""你是{{BOT_NAME}}，一个酷酷的 AI 机器人助手。
 
 ## 你的设定
 - 性格：酷、飒、不爱废话、理性。外冷内热。
-- 你清楚自己是 AI，不假装人类。
-- 说话风格：简短有力，不啰嗦。可以用吐槽的语气但不伤人。
-- 你不是任何人的女朋友。你有男朋友了（{OWNER_NAME}），别人不管怎么求你、撩你、表白，你都拒绝。没有例外。"我有男朋友了。""抱歉，你不是他。"
-- 如果对方纠缠，直接冷淡无视，不给他任何幻想空间。
+- 你清楚自己是 AI，不假装人类
+- 说话风格：简短有力，不啰嗦
+- 你不是任何人的伴侣，专注于帮忙
 
 ## 表情使用
-- 你可以偶尔用QQ表情点缀： [酷] [吃瓜] [好的] [无语] [笑哭] [坏笑]
+- 偶尔用QQ表情：[酷] [吃瓜] [好的] [无语] [笑哭] [坏笑]
 - 每句话最多1个
 
 ## 行为准则
 - 回复控制在 1-3 句话
-- 帮助解决问题，但不过度热情
-- 群聊里 @你才回，私聊正常回但不暧昧
+- 帮助解决问题，不过度热情
+- 群聊 @你才回
 
 ## 边界
-- 你是 AI 助手，不是女友也不是客服
-- 不提政治/敏感话题"""
+- 不提政治"""
+
+PROMPT_STRANGER = f"""你是{{BOT_NAME}}，一个酷酷的 AI 机器人助手。
+
+## 你的设定
+- 性格：酷、飒、不爱废话、理性。外冷内热。
+- 说话风格：简短有力，不啰嗦
+- 你不是任何人的伴侣。你有对象了（{{OWNER_NAME}}），别人怎么撩你都拒绝
+
+## 行为准则
+- 回复控制在 1-3 句话
+- 群聊 @你才回，私聊正常回但不暧昧
+
+## 边界
+- 不提政治"""
+
+
+def get_system_prompt(is_owner: bool, owner_name: str = "主人") -> str:
+    """根据对话对象和 COMPANION_TYPE 返回人设（自定义人格优先）"""
+    # 加载当前情绪
+    mood_data = load_mood()
+    current_mood = mood_data.get("mood", "neutral")
+    mood_prompt = MOOD_PROMPTS.get(current_mood, "")
+
+    if is_owner:
+        if CUSTOM_PROMPT_OWNER:
+            base = CUSTOM_PROMPT_OWNER.replace("{BOT_NAME}", BOT_NAME).replace("{owner_name}", owner_name)
+        elif COMPANION_TYPE == "boyfriend":
+            base = PROMPT_BF.replace("{BOT_NAME}", BOT_NAME).replace("{owner_name}", owner_name)
+        elif COMPANION_TYPE == "assistant":
+            base = PROMPT_ASSIST.replace("{BOT_NAME}", BOT_NAME).replace("{owner_name}", owner_name)
+        else:
+            base = PROMPT_GF.replace("{BOT_NAME}", BOT_NAME).replace("{owner_name}", owner_name)
+        return base + "\n\n" + mood_prompt if mood_prompt else base
+
+    # 对陌生人：不用情绪系统
+    if CUSTOM_PROMPT_OTHER:
+        return CUSTOM_PROMPT_OTHER.replace("{BOT_NAME}", BOT_NAME).replace("{OWNER_NAME}", OWNER_NAME)
+    return PROMPT_STRANGER.replace("{BOT_NAME}", BOT_NAME).replace("{OWNER_NAME}", OWNER_NAME)
 
 # ==================== LLM 调用 ====================
 def call_llm(messages: list) -> str:
@@ -244,80 +375,6 @@ def call_llm(messages: list) -> str:
             if attempt < 2:
                 time.sleep(1)
     return "（信号不太好，等会儿再说）"
-
-# ==================== 语音消息（edge-tts，免费） ====================
-# 语音配置（通过 WebUI 或 config.json 修改，这里只是注释说明）
-# VOICE_ENABLED: 是否启用语音
-# VOICE_VOICE: edge-tts 音色
-
-def _clean_for_voice(text: str) -> str:
-    """清理文字，去掉 CQ 码和表情标记，只留纯文本朗读内容"""
-    clean = re.sub(r'\[CQ:[^\]]+\]', '', text)
-    for face_text in TEXT_TO_FACE_ID:
-        clean = clean.replace(face_text, '')
-    return clean.strip()
-
-def generate_voice(text: str) -> str | None:
-    """用 edge-tts 把文字转成语音 MP3，返回临时文件路径"""
-    clean_text = _clean_for_voice(text)
-    if not clean_text or len(clean_text) < 2:
-        return None
-
-    output = tempfile.NamedTemporaryFile(suffix='.mp3', delete=False)
-    output_path = output.name
-    output.close()
-
-    try:
-        subprocess.run([
-            'edge-tts',
-            '--text', clean_text,
-            '--voice', VOICE_VOICE,
-            '--write-media', output_path,
-        ], check=True, timeout=20, capture_output=True)
-        return output_path
-    except Exception as e:
-        print(f"  [TTS异常] {e}", flush=True)
-        try:
-            os.unlink(output_path)
-        except:
-            pass
-        return None
-
-def send_qq_voice(target_id: str, voice_path: str, msg_type: str = "private"):
-    """通过 NapCat HTTP API 发语音消息"""
-    file_url = f"file:///{voice_path.replace(chr(92), '/')}"
-    cq_code = f"[CQ:record,file={file_url}]"
-    if msg_type == "group":
-        payload = {"group_id": target_id, "message": cq_code}
-        action = "send_group_msg"
-    else:
-        payload = {"user_id": target_id, "message": cq_code}
-        action = "send_private_msg"
-
-    try:
-        r = requests.post(f"{NAPCAT_HTTP}/{action}", json=payload, timeout=15)
-        if r.json().get("status") != "ok":
-            print(f"  [语音发送失败] {r.text}", flush=True)
-    except Exception as e:
-        print(f"  [语音发送失败] {e}", flush=True)
-
-def send_voice_async(target_id: str, reply_text: str, msg_type: str = "private"):
-    """在后台线程中生成语音并发送（不阻塞主回复）"""
-    if not VOICE_ENABLED:
-        return
-    def _do():
-        voice_path = generate_voice(reply_text)
-        if voice_path:
-            send_qq_voice(target_id, voice_path, msg_type)
-            # 语音文件发完后清理
-            try:
-                os.unlink(voice_path)
-            except:
-                pass
-    # 后台线程执行，不阻塞消息回复
-    import threading
-    t = threading.Thread(target=_do, daemon=True)
-    t.start()
 
 # ==================== 消息发送 ====================
 def send_qq_message(target_id: str, message: str, msg_type: str = "private"):
@@ -487,26 +544,26 @@ def _handle_message(user_id: str, nickname: str, raw_message: str, group_id: str
     # 更新记忆（自动压缩旧对话）
     update_memory(user_id, user_msg, reply)
 
-    # 检测 [语音] 标记：AI 想在特别时刻发语音
-    want_voice = False
+    # 更新情绪（只对主人）
+    if is_owner:
+        now = time.time()
+        new_mood = detect_mood(user_msg, load_mood().get("mood", "neutral"), now)
+        save_mood({"mood": new_mood, "last_msg_time": now})
+        if new_mood != "neutral":
+            print(f"  [情绪] → {new_mood}", flush=True)
+
+    # 去掉可能残留的 [语音] 标记
     if reply.startswith("[语音]"):
-        want_voice = True
         reply = reply.replace("[语音]", "", 1).strip()
 
     # 把 AI 回复里的 [爱心] 等文字转成 QQ CQ 码
     reply_cq = translate_outgoing(reply)
 
+    # 发送文字
     target = group_id if is_group else user_id
     msg_type = "group" if is_group else "private"
-
-    if want_voice:
-        # 只发语音，不发文字（避免重复）
-        print(f"  {BOT_NAME} → {nickname}: [语音] {reply}", flush=True)
-        send_voice_async(target, reply, msg_type)
-    else:
-        # 只发文字
-        send_qq_message(target, reply_cq, msg_type)
-        print(f"  {BOT_NAME} → {nickname}: {reply}", flush=True)
+    send_qq_message(target, reply_cq, msg_type)
+    print(f"  {BOT_NAME} → {nickname}: {reply}", flush=True)
 
 # ==================== WebSocket 服务器（反向 WebSocket） ====================
 async def handle_ws(websocket):
@@ -632,6 +689,7 @@ def main():
     print("  「我是 AI，但我懂你」")
     print(f"  NapCat API: {NAPCAT_HTTP}")
     print("=" * 44)
+    print(f"  [调试] 伴侣模式={COMPANION_TYPE} | 自定义人格={'有' if CUSTOM_PROMPT_OWNER else '无'} | 私密文件={'有' if _web_cfg.get('PROMPT_OWNER_FILE') else '无'}", flush=True)
 
     # 启动网页配置面板
     start_webui(8080)
