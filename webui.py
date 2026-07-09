@@ -1270,7 +1270,11 @@ async function playPreview(text, voice) {
   try {
     const r = await fetch('/api/voice/preview?text='+encodeURIComponent(text)+'&voice='+encodeURIComponent(voice));
     if(r.ok){const blob=await r.blob();playAudio(blob);}
-  } catch(e) { toast('语音生成失败','error'); }
+    else {
+      const data = await r.json();
+      toast(data.error || '语音生成失败','error');
+    }
+  } catch(e) { toast('语音生成失败，请检查网络连接','error'); }
 }
 
 function playAudio(blob) {
@@ -1619,6 +1623,15 @@ class WebUIHandler(BaseHTTPRequestHandler):
         if not re.match(r'^[a-zA-Z0-9_-]+$', voice):
             voice = "zh-CN-XiaoxiaoNeural"
 
+        # 检查 edge-tts 是否安装
+        import shutil
+        if shutil.which("edge-tts") is None:
+            self._send_json({
+                "ok": False,
+                "error": "未安装 edge-tts，请在终端运行：pip install edge-tts"
+            }, 500)
+            return
+
         output = tempfile.NamedTemporaryFile(suffix=".mp3", delete=False)
         output_path = output.name
         output.close()
@@ -1629,8 +1642,10 @@ class WebUIHandler(BaseHTTPRequestHandler):
                 check=True, timeout=15, capture_output=True,
             )
             self._send_audio(output_path)
+        except subprocess.TimeoutExpired:
+            self._send_json({"ok": False, "error": "语音生成超时，请检查网络连接"}, 500)
         except Exception as e:
-            self._send_json({"ok": False, "error": str(e)}, 500)
+            self._send_json({"ok": False, "error": f"语音生成失败：{e}"}, 500)
         finally:
             try:
                 os.unlink(output_path)
