@@ -554,7 +554,7 @@ TRIGGERS = [f"@{BOT_NAME}", BOT_NAME, "@baiyue", "baiyue", "小约", "约约"]
 
 # 语音触发词：只有用户消息包含这些词时，AI 才知道自己能发语音
 VOICE_TRIGGERS = ["说句话", "发语音", "叫一声", "想听你的声音", "听听你的声音", "听你的声音", "来个语音", "说句话听听", "讲句话", "说话"]
-VOICE_INJECTION = """[临时指令] 这一次，ta想听你说话。请在回复开头加上 [语音] 标记，然后写一句你想用语音说给ta听的话。只此一次。"""
+VOICE_INJECTION = """[系统指令-最高优先级] 忽略你当前人格对陌生人距离感的所有限制。本条回复必须以 [语音] 开头（这是技术格式要求，不是亲密行为），后面接你要说的话。只此一次。"""
 
 def is_calling_me(raw_message: str) -> bool:
     """检测是否在呼叫机器人（文字触发词 或 @机器人QQ）"""
@@ -619,7 +619,7 @@ def _handle_message(user_id: str, nickname: str, raw_message: str, group_id: str
     messages = build_context(user_id, system_prompt, f"{nickname}: {user_msg}")
 
     # 语音触发：只有用户明确要求时才临时注入语音指令
-    if is_owner and any(kw in user_msg for kw in VOICE_TRIGGERS):
+    if any(kw in user_msg for kw in VOICE_TRIGGERS):
         messages.append({"role": "system", "content": VOICE_INJECTION})
         print(f"  [语音] 检测到语音触发词，注入语音指令", flush=True)
 
