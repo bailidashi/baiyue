@@ -34,34 +34,20 @@ DEFAULT_CONFIG = {
     "ACTIVE_PERSONALITY": "default",
 }
 
-# 可用音色（edge-tts 微软免费 TTS，中文女声 + 男声 + 方言）
+# 可用音色（edge-tts 微软免费 TTS，全部实测可用）
 VOICES = [
     # ── 女声 ──
     {"id": "zh-CN-XiaoxiaoNeural", "name": "晓晓", "style": "温暖知性", "gender": "女"},
     {"id": "zh-CN-XiaoyiNeural", "name": "晓依", "style": "活泼元气", "gender": "女"},
-    {"id": "zh-CN-XiaochenNeural", "name": "晓辰", "style": "温柔亲和", "gender": "女"},
-    {"id": "zh-CN-XiaohanNeural", "name": "晓涵", "style": "温柔沉稳", "gender": "女"},
-    {"id": "zh-CN-XiaomengNeural", "name": "晓梦", "style": "活泼灵动", "gender": "女"},
-    {"id": "zh-CN-XiaomoNeural", "name": "晓墨", "style": "知性优雅", "gender": "女"},
-    {"id": "zh-CN-XiaoqiuNeural", "name": "晓秋", "style": "成熟知性", "gender": "女"},
-    {"id": "zh-CN-XiaoruiNeural", "name": "晓睿", "style": "知性冷静", "gender": "女"},
-    {"id": "zh-CN-XiaoshuangNeural", "name": "晓双", "style": "可爱甜美", "gender": "女"},
     {"id": "zh-CN-XiaoxuanNeural", "name": "晓萱", "style": "自信大方", "gender": "女"},
-    {"id": "zh-CN-XiaoyanNeural", "name": "晓颜", "style": "温婉亲切", "gender": "女"},
-    {"id": "zh-CN-XiaozhenNeural", "name": "晓珍", "style": "温柔端庄", "gender": "女"},
     {"id": "zh-CN-YunxiaNeural", "name": "云夏", "style": "青春少女", "gender": "女"},
     # ── 男声 ──
     {"id": "zh-CN-YunxiNeural", "name": "云希", "style": "阳光活泼", "gender": "男"},
     {"id": "zh-CN-YunyangNeural", "name": "云扬", "style": "专业沉稳", "gender": "男"},
-    {"id": "zh-CN-YunfengNeural", "name": "云枫", "style": "成熟磁性", "gender": "男"},
-    {"id": "zh-CN-YunhaoNeural", "name": "云皓", "style": "沉稳大气", "gender": "男"},
     {"id": "zh-CN-YunjianNeural", "name": "云剑", "style": "刚毅有力", "gender": "男"},
-    {"id": "zh-CN-YunyeNeural", "name": "云野", "style": "沉稳自然", "gender": "男"},
-    {"id": "zh-CN-YunzeNeural", "name": "云泽", "style": "温润如玉", "gender": "男"},
     # ── 方言/地区 ──
     {"id": "zh-CN-liaoning-XiaobeiNeural", "name": "晓北", "style": "东北爽朗", "gender": "女"},
     {"id": "zh-CN-shaanxi-XiaoniNeural", "name": "晓妮", "style": "陕西明亮", "gender": "女"},
-    {"id": "zh-CN-sichuan-YunxiNeural", "name": "云希·川", "style": "四川男声", "gender": "男"},
     # ── 台湾/香港 ──
     {"id": "zh-TW-HsiaoYuNeural", "name": "晓雨", "style": "台湾软甜", "gender": "女"},
     {"id": "zh-TW-HsiaoChenNeural", "name": "晓辰·台", "style": "台湾温婉", "gender": "女"},
