@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>百约教程 · 从零搭建QQ AI机器人</title>
+<title>百约 v3.0 教程 · 从零搭建QQ AI机器人</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -16,6 +16,8 @@
   --text-dim: #406653;
   --glass: rgba(235, 248, 235, 0.65);
   --code-bg: rgba(30, 46, 36, 0.06);
+  --red: #e85d5d;
+  --orange: #f0ad4e;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -28,130 +30,95 @@ body {
   padding: 2rem;
 }
 
-.container {
-  max-width: 900px;
-  margin: 0 auto;
-}
+.container { max-width: 900px; margin: 0 auto; }
 
 header {
-  text-align: center;
-  padding: 3rem 0 2rem;
+  text-align: center; padding: 3rem 0 2rem;
 }
 header h1 {
-  font-size: 2.5rem;
-  font-weight: 800;
-  color: var(--green-accent);
+  font-size: 2.5rem; font-weight: 800; color: var(--green-accent);
   margin-bottom: 0.5rem;
 }
-header p {
-  color: var(--text-dim);
-  font-size: 1rem;
-}
+header p { color: var(--text-dim); font-size: 1rem; }
 .back-link {
-  display: inline-block;
-  margin-bottom: 1rem;
-  color: var(--green-accent);
-  text-decoration: none;
-  font-weight: 500;
-  font-size: 0.9rem;
+  display: inline-block; margin-bottom: 1rem;
+  color: var(--green-accent); text-decoration: none;
+  font-weight: 500; font-size: 0.9rem;
 }
 .back-link:hover { text-decoration: underline; }
 
-/* Cards */
 .card {
   background: var(--glass);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(80, 120, 90, 0.15);
-  border-radius: 24px;
-  padding: 2rem 2.5rem;
+  border-radius: 24px; padding: 2rem 2.5rem;
   margin-bottom: 1.5rem;
   box-shadow: 0 4px 24px rgba(0,0,0,0.04);
 }
 .card h2 {
-  font-size: 1.4rem;
-  color: var(--green-accent);
-  margin-bottom: 1rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  font-size: 1.4rem; color: var(--green-accent);
+  margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;
 }
 .card h3 {
-  font-size: 1.1rem;
-  color: var(--text-dark);
+  font-size: 1.1rem; color: var(--text-dark);
   margin: 1.5rem 0 0.5rem;
 }
-.card p, .card li {
-  line-height: 1.8;
-  color: var(--text-dim);
-}
+.card p, .card li { line-height: 1.8; color: var(--text-dim); }
 .card ul { padding-left: 1.5rem; }
 .card li { margin-bottom: 0.3rem; }
 
-/* Code blocks */
 pre {
-  background: rgba(26, 46, 36, 0.85);
-  color: #c8e6d0;
-  border-radius: 14px;
-  padding: 1.2rem 1.5rem;
-  overflow-x: auto;
+  background: rgba(26, 46, 36, 0.85); color: #c8e6d0;
+  border-radius: 14px; padding: 1.2rem 1.5rem; overflow-x: auto;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.82rem;
-  line-height: 1.7;
-  margin: 1rem 0;
+  font-size: 0.82rem; line-height: 1.7; margin: 1rem 0;
 }
 
 code {
-  background: var(--code-bg);
-  padding: 0.15rem 0.5rem;
-  border-radius: 6px;
-  font-family: 'JetBrains Mono', monospace;
+  background: var(--code-bg); padding: 0.15rem 0.5rem;
+  border-radius: 6px; font-family: 'JetBrains Mono', monospace;
   font-size: 0.85rem;
 }
 
-/* Table */
 table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 1rem 0;
-  font-size: 0.9rem;
+  width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem;
 }
 th, td {
-  padding: 0.7rem 1rem;
-  text-align: left;
+  padding: 0.7rem 1rem; text-align: left;
   border-bottom: 1px solid rgba(80,120,90,0.1);
 }
 th { color: var(--green-accent); font-weight: 600; }
 td { color: var(--text-dim); }
 
-/* Tags */
 .tag {
-  display: inline-block;
-  background: rgba(47,133,90,0.12);
-  border-radius: 20px;
-  padding: 0.2rem 0.8rem;
-  font-size: 0.75rem;
-  color: var(--green-accent);
-  margin: 0.2rem;
+  display: inline-block; background: rgba(47,133,90,0.12);
+  border-radius: 20px; padding: 0.2rem 0.8rem;
+  font-size: 0.75rem; color: var(--green-accent); margin: 0.2rem;
 }
 
 .arch-diagram {
-  text-align: center;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.8rem;
-  color: var(--green-accent);
-  line-height: 2.2;
-  padding: 1.5rem;
-  background: rgba(47,133,90,0.05);
-  border-radius: 16px;
-  margin: 1rem 0;
+  text-align: center; font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem; color: var(--green-accent); line-height: 2.2;
+  padding: 1.5rem; background: rgba(47,133,90,0.05);
+  border-radius: 16px; margin: 1rem 0;
+}
+
+.problem-box {
+  background: rgba(47,133,90,0.06); border-left: 3px solid var(--green-accent);
+  border-radius: 0 12px 12px 0; padding: 1rem 1.5rem; margin: 0.8rem 0;
+}
+.problem-box .symptom { font-weight: 600; color: var(--text-dark); }
+.problem-box .cause { color: var(--text-dim); font-size: 0.85rem; margin-top: 4px; }
+.problem-box .fix { color: var(--green-accent); font-size: 0.87rem; margin-top: 6px; font-weight: 500; }
+
+.note {
+  background: rgba(240, 173, 78, 0.15); border: 1px solid rgba(240, 173, 78, 0.25);
+  border-radius: 12px; padding: 1rem 1.5rem; margin: 1rem 0;
+  font-size: 0.88rem; color: #8b6914;
 }
 
 footer {
-  text-align: center;
-  padding: 3rem 0;
-  color: var(--text-dim);
-  font-size: 0.85rem;
+  text-align: center; padding: 3rem 0; color: var(--text-dim); font-size: 0.85rem;
 }
 footer a { color: var(--green-accent); text-decoration: none; }
 </style>
@@ -160,15 +127,16 @@ footer a { color: var(--green-accent); text-decoration: none; }
 <div class="container">
 
 <header>
-  <a href="index.html" class="back-link">← 回到主页</a>
+  <a href="index.html" class="back-link">&larr; 回到主页</a>
   <h1>🤖 从零搭建你的 QQ AI 机器人</h1>
-  <p>百约 · BaiYue 完整教程 — Python + NapCatQQ + DeepSeek</p>
+  <p>百约 · BaiYue v3.0 完整教程 — Python + NapCatQQ + DeepSeek</p>
   <p style="margin-top:0.5rem;">
     <span class="tag">Python 3.12</span>
     <span class="tag">NapCatQQ</span>
     <span class="tag">DeepSeek API</span>
     <span class="tag">OneBot v11</span>
     <span class="tag">WebSocket</span>
+    <span class="tag">WebUI 配置面板</span>
   </p>
 </header>
 
@@ -177,13 +145,13 @@ footer a { color: var(--green-accent); text-decoration: none; }
   <h2>🧠 原理：你的机器人是怎么运行的</h2>
   <div class="arch-diagram">
     你在QQ发消息<br>
-    &nbsp;&nbsp;↓<br>
-    NapCatQQ 拦截消息 → 通过 WebSocket 转发给 Python<br>
-    &nbsp;&nbsp;↓<br>
+    &nbsp;&nbsp;&darr;<br>
+    NapCatQQ 拦截消息 &rarr; 通过 WebSocket 转发给 Python<br>
+    &nbsp;&nbsp;&darr;<br>
     Python 把消息发给 DeepSeek（AI大脑）<br>
-    &nbsp;&nbsp;↓<br>
-    DeepSeek 生成回复 → Python 发回 NapCat → QQ<br>
-    &nbsp;&nbsp;↓<br>
+    &nbsp;&nbsp;&darr;<br>
+    DeepSeek 生成回复 &rarr; Python 发回 NapCat &rarr; QQ<br>
+    &nbsp;&nbsp;&darr;<br>
     你看到回复
   </div>
   <table>
@@ -191,6 +159,7 @@ footer a { color: var(--green-accent); text-decoration: none; }
     <tr><td><strong>NapCatQQ</strong></td><td>翻译官。把QQ消息翻译成Python能读的JSON格式</td></tr>
     <tr><td><strong>Python程序</strong></td><td>中间人。收消息、调AI、发回复</td></tr>
     <tr><td><strong>DeepSeek API</strong></td><td>大脑。真正"说话"的那个</td></tr>
+    <tr><td><strong>WebUI 面板</strong></td><td>配置中心。浏览器打开就能改 API Key、换人格、试音色</td></tr>
   </table>
 </div>
 
@@ -199,10 +168,13 @@ footer a { color: var(--green-accent); text-decoration: none; }
   <h2>📦 第一步：安装 Python</h2>
   <ol style="color:var(--text-dim); line-height:2;">
     <li>打开 <a href="https://python.org" style="color:var(--green-accent)">python.org</a>，下载 Python 3.12.x</li>
-    <li>安装时<strong>勾选 "Add Python to PATH"</strong></li>
+    <li>安装时<strong>勾选 "Add Python to PATH"</strong>（非常重要！）</li>
     <li>验证：<code>python --version</code> 应显示 Python 3.12.x</li>
-    <li>装依赖：<code>python -m pip install websockets requests</code></li>
+    <li>装依赖：<code>python -m pip install websockets requests edge-tts</code></li>
   </ol>
+  <div class="note">
+    ⚠️ <strong>不要从微软商店装 Python！</strong>商店版是个空壳，<code>python --version</code> 没输出、pip 装不了包。从 python.org 下载正式版。
+  </div>
 </div>
 
 <!-- 第二步 -->
@@ -212,7 +184,7 @@ footer a { color: var(--green-accent); text-decoration: none; }
     <li>下载：<a href="https://github.com/NapNeko/NapCatQQ/releases" style="color:var(--green-accent)">github.com/NapNeko/NapCatQQ/releases</a></li>
     <li>下载 <code>NapCat.Shell.zip</code>，解压到某目录（如 D:\NapCat）</li>
     <li>双击 <code>NapCatWinBootMain.exe</code></li>
-    <li>弹出二维码 → 用手机QQ（机器人号）扫码登录</li>
+    <li>弹出二维码 &rarr; 用手机QQ（机器人号）扫码登录</li>
     <li>验证：浏览器打开 <code>http://127.0.0.1:3000/get_status</code>，看到 <code>"online":true</code></li>
   </ol>
 </div>
@@ -222,92 +194,243 @@ footer a { color: var(--green-accent); text-decoration: none; }
   <h2>🔑 第三步：获取 DeepSeek API Key</h2>
   <ol style="color:var(--text-dim); line-height:2;">
     <li>打开 <a href="https://platform.deepseek.com" style="color:var(--green-accent)">platform.deepseek.com</a></li>
-    <li>注册 → API Keys → 创建 Key → 复制保存</li>
+    <li>注册 &rarr; API Keys &rarr; 创建 Key &rarr; 复制保存</li>
     <li>充值 10 块钱，够用几个月</li>
   </ol>
   <p style="margin-top:0.5rem; font-size:0.85rem;">
-    💰 <strong>费用参考：</strong>聊100条约0.3元，聊一个月不到20块。
+    💰 <strong>费用参考：</strong>聊100条约0.3元，聊一个月不到20块。语音用微软免费TTS，不花钱。
   </p>
 </div>
 
-<!-- 第四步 -->
+<!-- 第四步：WebUI 配置 -->
 <div class="card">
-  <h2>💻 第四步：写代码</h2>
-  <p>完整代码在 <a href="https://github.com/bailidashi/baiyue" style="color:var(--green-accent)">github.com/bailidashi/baiyue</a>，核心结构：</p>
-  <pre>bot.py
-├── 配置（API Key / QQ号 / 端口）
-├── 人格设定（女友模式 / 助手模式）
-├── AI大脑（调 DeepSeek API）
-├── QQ收发（通过 NapCat HTTP API）
-├── 记忆系统（每人一个JSON文件）
-├── 表情翻译（CQ码 ↔ 文字表情）
-└── WebSocket 服务器（收消息）</pre>
+  <h2>🎨 第四步：用 WebUI 面板配置（不用改代码！）</h2>
+  <p>v3.0 最大的改进：<strong>不用翻代码了</strong>。所有配置在浏览器里完成。</p>
+
+  <h3>4.1 打开配置面板</h3>
+  <pre>python webui.py</pre>
+  <p>浏览器自动打开 <code>http://127.0.0.1:8080</code></p>
+
+  <h3>4.2 五个标签页</h3>
+  <table>
+    <tr><th>标签</th><th>干什么的</th></tr>
+    <tr><td>⚙ 账号配置</td><td>填 API Key、QQ号、称呼、选伴侣模式</td></tr>
+    <tr><td>💬 人格设定</td><td>5张内置人格卡片 + 自定义，一键切换</td></tr>
+    <tr><td>🧠 记忆管理</td><td>查看每个人的对话记录和长期记忆</td></tr>
+    <tr><td>🎙 语音设置</td><td>29种音色可选，点▶试听</td></tr>
+    <tr><td>💝 赞助名单</td><td>感谢捐助者，QQ群二维码</td></tr>
+  </table>
+
+  <h3>4.3 配置完记得保存</h3>
+  <p>每个页面改完配置后点「保存」按钮。配置存到 <code>config.json</code>，bot.py 启动时自动加载。</p>
 </div>
 
 <!-- 第五步 -->
 <div class="card">
-  <h2>🔗 第五步：配置 NapCat WebSocket</h2>
+  <h2>🔗 第五步：配置 NapCat（最容易出错的步骤！）</h2>
+  <p>NapCat 需要配置<strong>两个东西</strong>：HTTP 服务（用来发消息）+ WebSocket 客户端（用来收消息）。少了任何一个百约都不工作。</p>
+
+  <h3>5.1 进入 NapCat WebUI</h3>
   <ol style="color:var(--text-dim); line-height:2;">
-    <li>浏览器打开 NapCat WebUI（<code>http://127.0.0.1:6099/webui?token=你的Token</code>）</li>
-    <li>「网络配置」→「WebSocket客户端」→「添加」</li>
-    <li>名称：随便填 | URL：<code>ws://127.0.0.1:8001</code></li>
+    <li>在 NapCat 启动窗口里找到 <code>WebUi Token: xxxxxxxx</code>（一长串字符）</li>
+    <li>浏览器打开 <code>http://127.0.0.1:6099/webui?token=你的Token</code></li>
+    <li>如果 Token 过期了，重启 NapCat 会生成新的</li>
+  </ol>
+
+  <h3>5.2 配置 HTTP 服务（发消息用的）</h3>
+  <ol style="color:var(--text-dim); line-height:2;">
+    <li>左侧菜单 → 「HTTP 服务」</li>
+    <li><strong>✅ 开启 HTTP 服务</strong>（默认端口 3000，不用改）</li>
+    <li><strong>❌ 关闭 Token 验证</strong>（重要！不关的话百约请求会被拒绝）</li>
+    <li>点击保存</li>
+  </ol>
+  <div class="note">
+    ⚠️ <strong>这个 Token 不是 DeepSeek 的 Key！</strong>是 NapCat 自己的 HTTP 访问令牌。百约目前不支持带 Token 的连接，所以必须关掉。
+  </div>
+
+  <h3>5.3 配置 WebSocket 客户端（收消息用的）</h3>
+  <ol style="color:var(--text-dim); line-height:2;">
+    <li>左侧菜单 → 「网络配置」→「WebSocket 客户端」</li>
+    <li>点击「添加」：</li>
+  </ol>
+  <table>
+    <tr><th>字段</th><th>填什么</th><th>说明</th></tr>
+    <tr><td>名称</td><td>百约</td><td>随便填，自己能认出来就行</td></tr>
+    <tr><td>URL</td><td><code>ws://127.0.0.1:8001</code></td><td>必须是 ws:// 不是 http://</td></tr>
+    <tr><td>重连</td><td>开启</td><td>断了自动重连</td></tr>
+  </table>
+  <ol style="color:var(--text-dim); line-height:2;" start="3">
     <li>保存</li>
   </ol>
+
+  <div class="note">
+    ⚠️ <strong>常见错误：</strong><br>
+    · 把 <code>ws://</code> 写成了 <code>http://</code> → WebSocket 必须用 ws 协议<br>
+    · 忘了关 HTTP Token 验证 → 百约发消息被拒<br>
+    · 只配了 HTTP 服务忘了配 WebSocket → 收不到消息<br>
+    · 只配了 WebSocket 忘了开 HTTP 服务 → 发不出消息<br>
+    · WebSocket 地址里多打了空格 → 连接失败
+  </div>
+
+  <h3>5.4 验证配置</h3>
+  <p>两个都配好后：</p>
+  <ul style="color:var(--text-dim); line-height:2;">
+    <li>浏览器打开 <code>http://127.0.0.1:3000/get_status</code> → 看到 <code>"online":true</code></li>
+    <li>启动 bot.py 后看到 <code>[连接] NapCat 已接入</code></li>
+  </ul>
 </div>
 
 <!-- 第六步 -->
 <div class="card">
-  <h2>🚀 第六步：启动</h2>
+  <h2>🚀 第六步：启动百约</h2>
   <pre>python bot.py</pre>
-  <p>看到 <code>NapCat 已连接</code> 就成功了！去 QQ 上给机器人发消息试试。</p>
+  <p>看到以下输出就成功了：</p>
+  <pre>============================================
+  百约 · BaiYue  v3.0
+  「我是 AI，但我懂你」
+  NapCat API: http://127.0.0.1:3000
+============================================
+  [WebUI] 配置面板 &rarr; http://127.0.0.1:8080
+  [服务器] 监听 ws://127.0.0.1:8001
+  [OK] NapCat 在线，QQ 已登录
+  [连接] NapCat 已接入</pre>
+  <p>然后用你的主人QQ号给机器人发消息，百约就回你了。</p>
 </div>
 
-<!-- 常见问题 -->
+<!-- 自定义人格 -->
 <div class="card">
-  <h2>🩺 常见问题</h2>
+  <h2>🎨 自定义人格（不用改代码！）</h2>
+  <p>打开 WebUI &rarr; 人格设定 &rarr; 点击左侧卡片有 5 张内置人格：</p>
   <table>
-    <tr><th>现象</th><th>原因</th><th>解决</th></tr>
-    <tr><td>连不上 NapCat</td><td>NapCat 没启动/QQ没登录</td><td>先启动NapCat扫码</td></tr>
-    <tr><td>不回消息</td><td>WebSocket没配好</td><td>检查WebUI的WS地址</td></tr>
-    <tr><td>端口占用</td><td>旧机器人没关</td><td>任务管理器杀python.exe</td></tr>
-    <tr><td>回复很慢</td><td>DeepSeek服务器忙</td><td>正常，等一下</td></tr>
-    <tr><td>回复像客服</td><td>人格设定太弱</td><td>改 system_prompt 函数</td></tr>
+    <tr><th>图标</th><th>名称</th><th>作者</th><th>风格</th></tr>
+    <tr><td>💫</td><td>百约 · AI女友</td><td>百裏</td><td>酷飒温柔，外冷内热</td></tr>
+    <tr><td>🐱</td><td>猫娘 · 小铃</td><td>@懋懋</td><td>温柔可爱，软萌粘人</td></tr>
+    <tr><td>🐕</td><td>豆豆 · AI男友</td><td>@豆豆</td><td>卷毛年上，傲娇小狗型</td></tr>
+    <tr><td>☀️</td><td>阳 · AI男友</td><td>@葵</td><td>干净温柔，情绪稳定</td></tr>
+    <tr><td>🪨</td><td>知言 · AI搭档</td><td>@Claude</td><td>冷静靠谱，直接不废话</td></tr>
   </table>
+  <p style="margin-top:1rem;">点击卡片 &rarr; 右侧编辑器改文字 &rarr; 💾 保存 &rarr; ⭐ 设为当前使用 &rarr; 重启 bot.py</p>
+  <p>也可以点「+ 新建人格」自己写一个。</p>
+  <p style="font-size:0.85rem;color:var(--text3)">变量：<code>{BOT_NAME}</code> = 机器人名，<code>{owner_name}</code> = 主人称呼</p>
 </div>
 
-<!-- 进阶 -->
+<!-- 群聊 -->
 <div class="card">
-  <h2>🎨 进阶：自定义人格</h2>
-  <p>改 bot.py 里的 <code>get_system_prompt</code> 函数：</p>
-  <pre>def get_system_prompt(is_owner, name):
-    if is_owner:
-        return f"""这是对你（主人）的人格设定。
-        性格、说话风格、口头禅，越具体越像真的"""
-    else:
-        return """对其他人的人格设定。"""</pre>
-
-  <h3>人格示例</h3>
-  <pre style="font-size:0.78rem;"># 高冷猫娘
-"你是一只猫娘，用喵结尾，高冷但对主人粘人喵。对陌生人冷淡。"
-
-# 热血兄弟
-"你是死党，热血笨蛋类型。永远支持他，会骂醒迷茫的他。"
-
-# 毒舌吐槽役
-"毒舌AI，幽默吐槽一切。不伤人，善于发现逻辑漏洞，偶尔自黑。"</pre>
+  <h2>👥 群聊怎么用</h2>
+  <ol style="color:var(--text-dim); line-height:2;">
+    <li>把机器人拉进群</li>
+    <li>在群里 <strong>@机器人</strong> 或喊「百约」「小约」</li>
+    <li>只有 @了或喊了触发词才会回复，平时不会打扰</li>
+  </ol>
 </div>
 
-<!-- 表情包 -->
+<!-- 语音 -->
 <div class="card">
-  <h2>😎 进阶：让机器人能发表情</h2>
-  <p>百约内置了表情翻译系统：</p>
-  <ul>
-    <li><strong>收</strong>：QQ表情 <code>[CQ:face,id=66]</code> → 翻译成 <code>[爱心]</code> 给AI看</li>
-    <li><strong>发</strong>：AI回复 <code>[爱心]</code> → 翻译回 <code>[CQ:face,id=66]</code> 发到QQ</li>
-  </ul>
-  <p style="margin-top:0.8rem;">可在人格设定中告诉它这些表情：</p>
-  <div style="font-size:0.85rem; color:var(--text-dim);">
-    [爱心] [笑哭] [呲牙] [调皮] [偷笑] [坏笑] [酷] [好的] [吃瓜] [点赞] [抱拳] [玫瑰] [发呆] [亲亲] [害羞] [无语] [叹气]
+  <h2>🎤 语音消息怎么用</h2>
+  <p>百约平时<strong>不会主动发语音</strong>。只有你对她说以下关键词时才会：</p>
+  <p style="font-size:0.9rem;color:var(--green-accent);font-weight:600;">
+    "说句话" · "发语音" · "叫一声" · "想听你的声音" · "来个语音" · "说句话听听" · "讲句话"
+  </p>
+  <p style="margin-top:0.5rem;">WebUI 语音设置页有 29 种音色可选，点 ▶ 可以试听。</p>
+</div>
+
+<!-- ==================== 排错章节 ==================== -->
+<div class="card">
+  <h2>🩺 常见问题排查（真实踩坑记录）</h2>
+  <p>这些都是百裏和社区用户实际踩过的坑。按症状查找：</p>
+
+  <h3>安装类问题</h3>
+
+  <div class="problem-box">
+    <div class="symptom">🔴 python 不是内部命令</div>
+    <div class="cause">原因：Python 没装好，或没勾选 "Add to PATH"</div>
+    <div class="fix">✅ 解决：重装 Python，安装界面一定勾选底部 "Add Python to PATH"。或每次用 <code>python -m pip</code> 代替 <code>pip</code></div>
+  </div>
+
+  <div class="problem-box">
+    <div class="symptom">🔴 微软商店版 Python 不工作</div>
+    <div class="cause">现象：<code>python --version</code> 没输出、pip 装不了包</div>
+    <div class="fix">✅ 解决：卸载商店版，去 python.org 下载正式版。商店版是个空壳！</div>
+  </div>
+
+  <h3>连接类问题</h3>
+
+  <div class="problem-box">
+    <div class="symptom">🔴 连不上 NapCat（端口 3000 打不开）</div>
+    <div class="cause">原因：NapCat 没启动 / QQ 没登录 / HTTP 服务没开</div>
+    <div class="fix">✅ 解决：(1)确认 NapCatWinBootMain.exe 正在运行 (2)确认已扫码登录QQ (3)去 NapCat WebUI 确认 HTTP 服务已开启</div>
+  </div>
+
+  <div class="problem-box">
+    <div class="symptom">🔴 NapCat 有 Token 验证导致请求被拒</div>
+    <div class="cause">现象：bot.py 日志显示 401/403 错误</div>
+    <div class="fix">✅ 解决：NapCat WebUI → HTTP 服务 → 关闭 Token 验证</div>
+  </div>
+
+  <div class="problem-box">
+    <div class="symptom">🔴 机器人不回消息</div>
+    <div class="cause">几种可能：WebSocket 没配好 / 群聊没@机器人 / BOT_QQ 没填</div>
+    <div class="fix">✅ 解决：<br>
+      (1) NapCat WebUI → 网络配置 → WebSocket客户端 → 确认有 <code>ws://127.0.0.1:8001</code><br>
+      (2) 群聊必须 @机器人 或喊触发词<br>
+      (3) WebUI 账号配置页确认 BOT_QQ 填了机器人号</div>
+  </div>
+
+  <div class="problem-box">
+    <div class="symptom">🔴 群聊 @了机器人但没反应</div>
+    <div class="cause">QQ 群聊 @人 实际是 CQ 码 <code>[CQ:at,qq=xxx]</code>，不是文字</div>
+    <div class="fix">✅ 解决：v2.1+ 已修复。确认 WebUI 里 BOT_QQ 填了机器人的 QQ 号，bot.py 会识别 CQ 码</div>
+  </div>
+
+  <h3>API 类问题</h3>
+
+  <div class="problem-box">
+    <div class="symptom">🔴 百约回复"信号不太好，等会儿再说"</div>
+    <div class="cause">原因：DeepSeek API Key 填错了 / 过期了 / 余额用完了</div>
+    <div class="fix">✅ 解决：<br>
+      (1) 打开 <a href="https://platform.deepseek.com" style="color:var(--green-accent)">platform.deepseek.com</a><br>
+      (2) 检查 API Keys 是否正确<br>
+      (3) 检查余额，不足就充 10 块<br>
+      (4) 把正确 Key 填进 WebUI → 配置页 → 保存</div>
+  </div>
+
+  <h3>运行类问题</h3>
+
+  <div class="problem-box">
+    <div class="symptom">🔴 改了代码但没生效</div>
+    <div class="cause">Python 的 <code>.pyc</code> 缓存文件用的是旧版本代码</div>
+    <div class="fix">✅ 解决：删掉项目目录下的 <code>__pycache__</code> 文件夹 → 重启程序 → 浏览器 Ctrl+Shift+R 强制刷新</div>
+  </div>
+
+  <div class="problem-box">
+    <div class="symptom">🔴 端口 8001 被占用</div>
+    <div class="cause">旧的百约没关 / 其他程序占着端口</div>
+    <div class="fix">✅ 解决：任务管理器杀掉所有 python.exe。v2.0+ 会自动探测 8001-8005，被占就试下一个</div>
+  </div>
+
+  <div class="problem-box">
+    <div class="symptom">🔴 bot.py 显示"等待 NapCat 启动"然后超时</div>
+    <div class="cause">NapCat 没运行 / QQ 没登录 / HTTP 服务没配好</div>
+    <div class="fix">✅ 解决：确认 (1)NapCat 正在运行 (2)QQ 已扫码登录 (3)HTTP 服务端口3000已开启</div>
+  </div>
+
+  <div class="problem-box">
+    <div class="symptom">🔴 百约总是发语音</div>
+    <div class="cause">v2.x 人格提示词告诉了 AI 能发语音，AI 自己决定发语音太频繁</div>
+    <div class="fix">✅ 解决：v3.0 已修复！AI 平时完全不知道能发语音，只有你说"说句话/发语音/叫一声"才触发。更新到最新版 bot.py + webui.py 即可</div>
+  </div>
+
+  <div class="problem-box">
+    <div class="symptom">🔴 配置文件写坏了，WebUI 打不开</div>
+    <div class="cause">手动改 config.json 时格式写错</div>
+    <div class="fix">✅ 解决：v3.0 每次保存自动备份 config.json.bak。把 config.json.bak 重命名为 config.json 即可恢复</div>
+  </div>
+
+  <h3>其他</h3>
+
+  <div class="problem-box">
+    <div class="symptom">🔴 百约的记忆乱了 / 想从头开始</div>
+    <div class="fix">✅ 解决：对机器人发 "/清空" 或 "/reset" 或 "/忘记"。或在 WebUI → 记忆管理 → 找到那个用户 → 清空记忆</div>
   </div>
 </div>
 
@@ -316,11 +439,14 @@ footer a { color: var(--green-accent); text-decoration: none; }
   <p style="color:var(--text-dim);">
     完整源码 + 教程：<a href="https://github.com/bailidashi/baiyue" style="color:var(--green-accent)">github.com/bailidashi/baiyue</a>
   </p>
+  <p style="color:var(--text-dim);margin-top:0.5rem;">
+    QQ 交流群：<strong style="color:var(--green-accent)">227077265</strong>
+  </p>
 </div>
 
 <footer>
-  <p>百裏 © 2026 · 跟拍档 Claude Code 一起写的</p>
-  <p style="margin-top:0.3rem;"><a href="index.html">← 回到主页</a></p>
+  <p>百裏 &copy; 2026 · 跟拍档 Claude Code 一起写的</p>
+  <p style="margin-top:0.3rem;"><a href="index.html">&larr; 回到主页</a></p>
 </footer>
 
 </div>

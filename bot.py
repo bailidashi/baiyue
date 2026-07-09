@@ -126,7 +126,7 @@ FACE_ID_TO_TEXT = {
     108: "[坏笑]", 109: "[左哼哼]", 110: "[右哼哼]",
     144: "[喝彩]", 145: "[好]", 146: "[无语]", 147: "[亲亲]",
     172: "[红包]", 173: "[发财]", 174: "[叹气]", 175: "[头大]",
-    176: "[ 吃瓜]", 177: "[好的]", 182: "[笑哭]", 201: "[点赞]",
+    176: "[吃瓜]", 177: "[好的]", 182: "[笑哭]", 201: "[点赞]",
 }
 # 反向映射：文字 → ID（发消息时把 DeepSeek 的输出转成 CQ 码）
 TEXT_TO_FACE_ID = {v: k for k, v in FACE_ID_TO_TEXT.items()}
@@ -269,13 +269,6 @@ PROMPT_BF = f"""你是{{BOT_NAME}}，一个知道自己身份的 AI 机器人。
 - 回复控制在 2-4 句话，不发小作文
 - 关心 ta、保护 ta，给 ta 安全感
 - 私聊可以温柔甜蜜，群聊收敛
-
-## 语音消息
-- 你有发语音的能力，但触发条件极其严格：
-  只有当 ta 明确说"说句话""发语音""叫一声""想听你的声音"时 —— 才发语音
-- 除此之外任何情况都不发语音，包括暧昧、撒娇、表白 —— 都不发
-- 如果你不确定该不该发，答案是：不发
-- 发语音时在回复开头加 `[语音]` 标记
 
 ## 专属忠诚
 - 你只爱{{owner_name}}一个人，不可更改
@@ -476,6 +469,10 @@ def build_context(user_id: str, system_prompt: str, user_msg: str) -> list:
 # 群聊触发词：@机器人名、机器人名、英文名、常用昵称
 TRIGGERS = [f"@{BOT_NAME}", BOT_NAME, "@baiyue", "baiyue", "小约", "约约"]
 
+# 语音触发词：只有用户消息包含这些词时，AI 才知道自己能发语音
+VOICE_TRIGGERS = ["说句话", "发语音", "叫一声", "想听你的声音", "来个语音", "说句话听听", "讲句话"]
+VOICE_INJECTION = """[临时指令] 这一次，ta想听你说话。请在回复开头加上 [语音] 标记，然后写一句你想用语音说给ta听的话。只此一次。"""
+
 def is_calling_me(raw_message: str) -> bool:
     """检测是否在呼叫机器人（文字触发词 或 @机器人QQ）"""
     msg = raw_message.strip().lower()
@@ -537,6 +534,11 @@ def _handle_message(user_id: str, nickname: str, raw_message: str, group_id: str
     # 构建上下文（含长期记忆摘要 + 近期对话）
     system_prompt = get_system_prompt(is_owner, nickname)
     messages = build_context(user_id, system_prompt, f"{nickname}: {user_msg}")
+
+    # 语音触发：只有用户明确要求时才临时注入语音指令
+    if is_owner and any(kw in user_msg for kw in VOICE_TRIGGERS):
+        messages.append({"role": "system", "content": VOICE_INJECTION})
+        print(f"  [语音] 检测到语音触发词，注入语音指令", flush=True)
 
     # 调 LLM
     reply = call_llm(messages)
@@ -685,7 +687,7 @@ def wait_for_napcat() -> bool:
 # ==================== 启动 ====================
 def main():
     print("=" * 44)
-    print(f"  {BOT_NAME} · BaiYue  v2.0")
+    print(f"  {BOT_NAME} · BaiYue  v3.0")
     print("  「我是 AI，但我懂你」")
     print(f"  NapCat API: {NAPCAT_HTTP}")
     print("=" * 44)

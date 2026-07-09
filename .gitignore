@@ -7,6 +7,11 @@ config.json
 # 私密人格文件
 prompt_private.txt
 
+# 开发文档（本地用，不推远程）
+bot_commented.py
+AI接手说明.md
+开发日志.md
+
 # Python 缓存
 __pycache__/
 *.pyc

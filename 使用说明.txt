@@ -1,146 +1,148 @@
 ============================================
-  百约 (BaiYue) — QQ AI 机器人 完整使用说明
-  日期：2026.07.04
+  百约 (BaiYue) v3.0 — QQ AI 机器人 使用说明
+  更新日期：2026.07.09
 ============================================
+
+## 零、什么是百约？
+
+百约是一个跑在你电脑上的 QQ AI 机器人。
+她有自己的性格、记忆、情绪——不是一个冷冰冰的自动回复机。
+你可以通过浏览器打开配置面板，改 API Key、换人格、试听音色——不用翻代码。
 
 ## 一、你需要准备什么
 
-
 1. 一个 QQ 号（给机器人用，建议小号）
-2. 一个 DeepSeek API Key（https://platform.deepseek.com ）
+2. 一个 DeepSeek API Key（https://platform.deepseek.com 注册，充10块能用很久）
 3. Python 3.12（从 https://python.org 下载，安装时勾选"Add to PATH"）
 
-【重要】不要从微软商店装Python！
+【重要】不要从微软商店装 Python！
 
-## 二、安装包下载
-
-因为部分安装包超过GitHub文件限制，请从以下地址下载：
-
-| 文件 | 下载地址 | 说明 |
-|---|---|---|
-| Python 3.12 | https://python.org | 官网下载，免费 |
-| NapCatQQ | https://github.com/NapNeko/NapCatQQ/releases | 下载 NapCat.Shell.zip |
-| 完整项目包 | 见网盘链接（含所有安装包） | 一键下载全部 |
-
-【网盘链接】待上传后补充
-
-## 三、安装步骤（按顺序来）
+## 二、安装步骤（按顺序来）
 
 ### 第1步：安装 Python
 1. 运行 python-3.12.x-amd64.exe
 2. 勾选底部 "Add Python to PATH"（非常重要！）
 3. 点击 Install Now
-4. 安装完成后，打开 CMD 验证：
-   python --version
-   应该显示 Python 3.12.x
+4. 验证：打开 CMD，输入 python --version，应显示 Python 3.12.x
 
-### 第2步：安装 Python 依赖包
+### 第2步：安装依赖包
 打开 CMD，输入：
-   python -m pip install websockets requests
-
-如果报错"pip不是内部命令"，说明Python没装好或没勾选Add to PATH。
-解决方法：重装Python，确保勾选"Add Python to PATH"。
+   python -m pip install websockets requests edge-tts
 
 ### 第3步：安装 NapCatQQ
-1. 解压 NapCat.Shell.zip 到某个目录（例如 D:\NapCat）
-2. 双击 NapCatWinBootMain.exe
-3. 会弹出一个黑窗口，显示QQ登录二维码
-4. 用手机QQ（机器人号）扫码登录
-5. 看到 "NapCat4 Is Running" 就是成功了
+1. 下载 NapCat.Shell.zip：https://github.com/NapNeko/NapCatQQ/releases
+2. 解压到某个目录（例如 D:\NapCat）
+3. 双击 NapCatWinBootMain.exe
+4. 用手机 QQ（机器人号）扫码登录
+5. 验证：浏览器打开 http://127.0.0.1:3000/get_status ，看到 "online":true
 
-验证：浏览器打开 http://127.0.0.1:3000/get_status
-看到 "online":true 就对了。
+### 第4步：配置 NapCat（最容易出错的步骤，仔细看！）
 
-### 第4步：配置百约
-1. 用记事本打开 bot.py
-2. 找到第27行：DEEPSEEK_KEY = ""
-3. 填入你的 DeepSeek API Key（在 platform.deepseek.com 获取）
-4. 找到第34行：OWNER_QQ = ""
-5. 改成你自己的 QQ 号（主人号，机器人会对这个号用女友模式）
-6. 找到第37行：BOT_QQ = ""
-7. 改成你机器人的 QQ 号（用于识别群聊 @提及）
-6. 保存文件
+NapCat 需要配两个东西：
+  (A) HTTP 服务 → 用来发消息出去（端口 3000）
+  (B) WebSocket 客户端 → 用来收消息进来（端口 8001）
+  两个缺一不可！
 
-### 第5步：配置 NapCat WebSocket
-1. 浏览器打开 NapCat WebUI：
-   在 NapCat 启动窗口里找到 "WebUi Token: xxxxxxxx"
-   然后访问 http://127.0.0.1:6099/webui?token=你的Token
-2. 找到「网络配置」→「WebSocket客户端」
-3. 点击「添加」：
-   - 名称：百约
-   - URL：ws://127.0.0.1:8001
-4. 保存
+4.1 进入 NapCat WebUI
+   - 在 NapCat 启动窗口里找到 "WebUi Token: xxxxxxxx"（一长串字符）
+   - 浏览器打开 http://127.0.0.1:6099/webui?token=你的Token
+   - 如果 Token 过期了，重启 NapCat 会生成新的
 
-### 第6步：启动百约
-打开 CMD，进入百约文件夹：
-   cd 百约文件夹路径
+4.2 配置 HTTP 服务（发消息）
+   - 左侧菜单 →「HTTP 服务」
+   - ✅ 开启 HTTP 服务（默认端口 3000，不用改）
+   - ❌ 关闭 Token 验证（重要！！不关的话百约的请求会被拒绝，报401/403错误）
+   - 点击保存
+   - 验证：浏览器打开 http://127.0.0.1:3000/get_status，看到 "online":true
+
+   【注意】这个 Token 是 NapCat 自己的 HTTP 访问令牌，不是 DeepSeek 的 Key！
+          百约目前不支持带 Token 的 NapCat 连接，必须关掉。
+
+4.3 配置 WebSocket 客户端（收消息）
+   - 左侧菜单 →「网络配置」→「WebSocket 客户端」→「添加」
+   - 名称：百约（随便填，自己能认出来就行）
+   - URL：ws://127.0.0.1:8001（必须是 ws:// 不是 http://！）
+   - 重连：开启（断了自动重连）
+   - 保存
+
+4.4 常见配置错误（按发生频率排序）
+   ❌ 把 ws:// 写成了 http:// → WebSocket 必须用 ws 协议
+   ❌ 忘了关 HTTP Token 验证 → 百约发消息被拒，日志显示 401/403
+   ❌ 只配了 HTTP 服务忘了配 WebSocket → 能发消息但收不到消息
+   ❌ 只配了 WebSocket 忘了开 HTTP 服务 → 能收消息但发不出去
+   ❌ WebSocket URL 里多打了空格 → 连接失败
+   ❌ 配了 WebSocket 但 QQ 还没扫码登录 → 消息不会转发
+   ❌ Token 输错了进不去 WebUI → 重启 NapCat 看新的 Token
+
+4.5 验证配置成功
+   - 浏览器打开 http://127.0.0.1:3000/get_status → 看到 "online":true
+   - 启动 bot.py 后看到 "[连接] NapCat 已接入"
+   - 两个信号都有 = 配置正确
+
+### 第5步：启动百约
+1. 先打开 WebUI 配置面板：
+   python webui.py
+2. 浏览器打开 http://127.0.0.1:8080
+3. 在「账号配置」页填入 DeepSeek API Key 和 QQ 号
+4. 保存配置，关闭 WebUI
+5. 启动机器人：
    python bot.py
 
-看到 "NapCat 已接入" 就是成功了！
+## 三、WebUI 配置面板说明
 
-然后用你的主人QQ号给机器人QQ号发消息，百约就回你了。
+浏览器打开 http://127.0.0.1:8080，左侧有 5 个标签页：
 
-## 四、常见问题排查
+【⚙ 账号配置】
+- DeepSeek API Key：在 platform.deepseek.com 获取
+- QQ 号绑定：主人号 + 机器人号 + 称呼
+- 伴侣模式：AI女友 / AI男友 / 酷酷助手
 
-| 问题 | 原因 | 解决方法 |
-|---|---|---|
-| python不是内部命令 | Python没装好 | 重装Python，勾选Add to PATH |
-|---|---|---|
-| pip不是内部命令 | 同上 | 用 python -m pip 代替 pip |
-| 连不上NapCat(端口3000) | NapCat没启动或QQ没登录 | 先开NapCat，扫码登录QQ |
-| 端口8001被占用 | 旧的百约/其他程序占着 | 任务管理器关掉python.exe，或等v2.0自动换端口 |
-| 机器人不回消息 | WebSocket没配好 | 检查NapCat WebUI的WS地址是 ws://127.0.0.1:8001 |
-| AI回复很慢 | DeepSeek服务器忙 | 正常现象，稍等几秒 |
-| 机器人回复很AI/像客服 | 人格设定不够具体 | 改bot.py里的get_system_prompt函数 |
-| 群聊里不理人 | 需要@机器人才触发 | 在群里@机器人名字 |
+【💬 人格设定】
+- 5 张内置人格卡片：百约·AI女友 / 猫娘·小铃 / 豆豆·AI男友 / 阳·AI男友 / 知言·AI搭档
+- 点击卡片查看/编辑提示词
+- ⭐ 设为当前使用 → 重启 bot.py 生效
+- 可以新建自己的人格卡片
 
-## 五、自定义人格
+【🧠 记忆管理】
+- 查看百约和每个人的对话记录
+- 气泡样式展示，一问一答
+- 长期记忆摘要（聊超过50轮自动生成）
+- 可以清空某个人的记忆
 
-打开 bot.py，找到 get_system_prompt 函数，修改里面的文字即可。
+【💝 赞助名单】
+- 感谢捐助者
+- QQ 群二维码，扫码加入交流群
 
-百约有两套人设：
-- is_owner = True  → 对你（主人QQ号）的人格 → AI女友模式
-- is_owner = False → 对其他人的人格 → 酷酷AI助手模式
+【🎙 语音设置】
+- 29 种音色可选：女声13种 / 男声7种 / 方言3种 / 台港6种
+- 点 ▶ 试听
+- 点击音色卡片即可选中
+- 注意：百约平时不发语音，只有你说"说句话/发语音/叫一声"时才会发
 
-你越具体，她越像真的。
+## 四、怎么自定义人格
+
+打开 WebUI → 人格设定 → 点击左侧卡片 → 右侧编辑器修改文字 → 保存 → ⭐ 设为当前使用 → 重启 bot.py
+
+提示词里的变量：
+  {BOT_NAME}    → 机器人的名字
+  {owner_name}  → 主人的称呼
+  {OWNER_NAME}  → 主人的称呼（陌生人提示词里用）
+
+## 五、群聊怎么用
+
+1. 把机器人拉进群
+2. 在群里 @机器人 或喊"百约""小约"
+3. 只有 @了机器人才会回复，不然不理
 
 ## 六、怎么让机器人发表情
 
-百约内置了QQ表情翻译系统，直接在人格设定里告诉它能用哪些表情：
+在人格设定里告诉它能用哪些表情就行：
 [爱心] [笑哭] [呲牙] [调皮] [偷笑] [坏笑] [酷] [好的] [吃瓜]
-[点赞] [抱拳] [玫瑰] [发呆] [亲亲] [害羞] [无语] [叹气] [睡] [惊讶]
+[点赞] [抱拳] [玫瑰] [发呆] [亲亲] [害羞] [无语] [叹气]
 
 原理：你发QQ表情 → 代码翻译成文字给AI → AI回复文字表情 → 代码翻译成QQ表情发出去
 
-## 七、怎么更新到最新版本
-
-1. 去 GitHub 下载最新 bot.py：https://github.com/bailidashi/baiyue
-2. 替换旧文件
-3. 重新填入你的 API Key 和 QQ号
-4. 重启 python bot.py
-
-## 八、项目结构
-
-baiyue/
-├── bot.py          ← 主程序（你要改的都在这里）
-├── README.md       ← 详细教程（Markdown格式）
-├── 使用说明.txt     ← 本文件
-└── memory/         ← 对话记忆文件夹（自动生成，不要删）
-
-## 九、技术架构（给懂的人看）
-
-QQ消息 → NapCatQQ(OneBot v11) → WebSocket(8001) → bot.py → DeepSeek API → NapCat HTTP(3000) → QQ回复
-
-技术栈：
-- Python 3.12
-- websockets（WebSocket服务器）
-- requests（HTTP客户端）
-- DeepSeek API（AI大脑）
-- NapCatQQ（QQ协议适配，OneBot v11标准）
-- 双向QQ表情CQ码翻译
-- 长期记忆+自动摘要系统
-
-## 十、费用参考
+## 七、费用参考
 
 DeepSeek API 定价：
 - 输入：1元/百万token
@@ -149,12 +151,136 @@ DeepSeek API 定价：
 估算：
 - 每条消息约 0.003 元
 - 聊100条 ≈ 0.3元
-- 一天200条 ≈ 0.6元
 - 一个月 ≈ 不到20元
+- 充10块钱能用很久
 
-充10块钱能用很久。
+语音是微软免费的 edge-tts，不花钱。
 
----
+============================================
+  常见问题排查（真实踩坑记录）
+============================================
+
+【问题1】python 不是内部命令
+  原因：Python 没装好，或没勾选"Add to PATH"
+  解决：
+    1. 重装 Python，安装界面一定勾选底部 "Add Python to PATH"
+    2. 或者用 python -m pip 代替 pip 命令
+
+【问题2】pip 不是内部命令
+  原因：同上
+  解决：用 python -m pip 代替 pip
+    例如：python -m pip install websockets requests
+
+【问题3】微软商店版 Python 是个空壳
+  现象：python --version 没输出、pip 装不了包
+  原因：从微软商店安装的 Python 不完整
+  解决：卸载它，去 python.org 下载正式版，安装时勾选"Add to PATH"
+
+【问题4】连不上 NapCat（端口 3000 打不开）
+  现象：浏览器打开 http://127.0.0.1:3000/get_status 没反应
+  原因：NapCat 没启动 / QQ 没登录 / HTTP 服务没开
+  解决：
+    1. 确认 NapCatWinBootMain.exe 正在运行
+    2. 确认已经扫码登录 QQ
+    3. 确认 NapCat WebUI 里 HTTP 服务已开启（端口 3000）
+
+【问题5】NapCat HTTP 服务有 Token 验证
+  现象：百约的请求被拒绝，日志显示 401/403
+  原因：NapCat 默认开了 Token 验证
+  解决：去 NapCat WebUI → HTTP 服务 → 关闭 Token 验证
+
+【问题6】DeepSeek API Key 无效或余额不足
+  现象：机器人回复一直"信号不太好，等会儿再说"
+  原因：API Key 填错了 / 过期了 / 余额用完了
+  解决：
+    1. 打开 https://platform.deepseek.com
+    2. 检查 API Keys 页面，确认 Key 正确
+    3. 检查余额，不足就充10块
+    4. 把正确的 Key 填进 WebUI → 配置页 → 保存
+
+【问题7】端口 8001 被占用
+  现象：启动 bot.py 时报错端口占用
+  原因：旧的百约没关 / AstrBot 等其他程序占着
+  解决：
+    1. 任务管理器杀掉所有 python.exe
+    2. bot.py v2.0+ 会自动探测 8001-8005，8001 被占就试下一个
+    3. 如果 5 个端口都被占，手动关掉占用的程序
+
+【问题8】机器人不回消息
+  现象：bot.py 显示运行中，但 QQ 上发消息没反应
+  可能的原因和解决：
+    a) WebSocket 没配好
+       → NapCat WebUI → 网络配置 → WebSocket客户端 → 确认有 ws://127.0.0.1:8001
+    b) 群聊没 @机器人
+       → 群聊里必须 @机器人 或喊触发词才会回复
+    c) 改了代码但没生效
+       → 删掉 __pycache__ 文件夹，重启 bot.py
+
+【问题9】改了代码但没生效
+  现象：明明改了 webui.py 或 bot.py，但行为还是旧的
+  原因：Python 的 .pyc 缓存文件用的是旧版本代码
+  解决：
+    1. 删掉项目目录下的 __pycache__ 文件夹
+    2. 重启程序
+    3. 浏览器 Ctrl+Shift+R 强制刷新
+
+【问题10】机器人总是发语音
+  现象：百约每句话都带 [语音] 标记，或者频繁发语音
+  原因：v2.x 的人格提示词里告诉了 AI 语音能力，AI 自己决定发语音太频繁
+  解决：v3.0 已修复 ——
+    1. AI 平时完全不知道能发语音
+    2. 只有你说"说句话""发语音""叫一声""想听你的声音"时才触发
+    3. 更新到最新版 bot.py 即可
+
+【问题11】群聊 @机器人 没反应
+  现象：群里 @了机器人，但不回复
+  原因：QQ 群聊 @人 实际是 CQ 码 [CQ:at,qq=xxx]，不是文字
+  解决：v2.1+ 已修复 —— 确认 BOT_QQ 填了机器人的 QQ 号
+
+【问题12】bot.py 显示"等待 NapCat 启动"然后超时
+  现象：等了 2 分钟最后超时退出
+  原因：NapCat 没启动 / QQ 没登录 / HTTP 服务没配好
+  解决：
+    1. 确认 NapCatWinBootMain.exe 正在运行
+    2. 确认 QQ 已扫码登录（手机 QQ 上能看到登录状态）
+    3. 确认 HTTP 服务已开启（端口 3000）
+
+【问题13】百约的记忆乱了 / 想从头开始
+  解决：
+    1. 对机器人发 "/清空" 或 "/reset" 或 "/忘记"
+    2. 或者在 WebUI → 记忆管理 → 找到那个用户 → 清空记忆
+
+【问题14】配置文件写坏了，WebUI 打不开
+  现象：改了 config.json 之后 WebUI 报错
+  解决：
+    1. 找到 config.json.bak（自动备份文件）
+    2. 把 config.json.bak 重命名为 config.json
+    3. 重启 WebUI
+
+============================================
+  项目结构
+============================================
+
+baiyue/
+├── bot.py              ← 主程序
+├── webui.py            ← 网页配置面板（浏览器打开配置一切）
+├── bot_commented.py    ← 全注释学习版（每行都有讲解）
+├── config.json         ← 用户配置（含 API Key，不上传 GitHub）
+├── config.json.bak     ← 配置自动备份
+├── prompt_private.txt  ← 私密人格文件（优先级最高，不上传）
+├── baiyue-icon.jpg     ← 百约图标
+├── qrcode.jpg          ← QQ 群二维码
+├── README.md           ← 技术教程
+├── 使用说明.txt         ← 本文件
+├── 开发日志.md          ← 每次改动的完整记录
+├── baiyue.html         ← 网页版教程
+└── memory/             ← 对话记忆 + 情绪状态（自动生成）
+    ├── QQ号.json       ← 每个人的对话记忆
+    └── mood.json       ← 百约的情绪状态
+
+============================================
 
 有问题去 GitHub 提 Issue：https://github.com/bailidashi/baiyue
-百约 2026.07.04
+或加 QQ 群：227077265
+
+百约 v3.0 · 2026.07.09
