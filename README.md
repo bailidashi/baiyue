@@ -61,16 +61,22 @@ QQ → NapCatQQ (OneBot v11) → WebSocket:8001 → bot.py → DeepSeek API
 
 ```
 baiyue/
-├── bot.py              ← 主程序
-├── webui.py            ← 网页配置面板
+├── bot.py              ← 主程序（800+行）
+├── webui.py            ← 网页配置面板（6个标签页）
 ├── bot_commented.py    ← 全注释学习版（逐行讲解）
 ├── config.json         ← 用户配置（不上传 GitHub）
+├── config.json.bak     ← 配置自动备份
 ├── prompt_private.txt  ← 私密人格（不上传 GitHub）
+├── baiyue-icon.jpg     ← 百约图标
+├── qrcode.jpg          ← QQ 群二维码
+├── memory/             ← 对话记忆 + 情绪 + 好感度数据
 ├── README.md           ← 本文件
-├── 使用说明.txt         ← 详细使用手册 + FAQ
+├── 使用说明.txt         ← 详细使用手册 + 14个FAQ
 ├── 开发日志.md          ← 完整开发记录
-├── baiyue.html         ← 网页版教程
-└── memory/             ← 对话记忆 + 情绪
+├── AI接手说明.md        ← 给接手AI的文档
+├── 视频教学清单.md      ← 录视频分步清单
+├── 雏田攻略方案.md      ← 攻略模式设计文档
+└── baiyue.html         ← 网页版教程
 ```
 
 ## 常见问题
