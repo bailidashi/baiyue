@@ -345,6 +345,94 @@ def get_system_prompt(is_owner: bool, owner_name: str = "主人") -> str:
         return CUSTOM_PROMPT_OTHER.replace("{BOT_NAME}", BOT_NAME).replace("{OWNER_NAME}", OWNER_NAME)
     return PROMPT_STRANGER.replace("{BOT_NAME}", BOT_NAME).replace("{OWNER_NAME}", OWNER_NAME)
 
+# ==================== 好感度 & 任务系统 ====================
+# 雏田攻略模式：10 个火影忍者手游任务
+
+HINATA_TASKS = [
+    {"id": 1, "name": "下忍试炼", "desc": "用任意忍者在一局内击败 3 个不同角色（穿三）", "favor": 8, "diff": "⭐"},
+    {"id": 2, "name": "白眼的修行", "desc": "不使用密卷和通灵，赢一局", "favor": 8, "diff": "⭐"},
+    {"id": 3, "name": "守护木叶", "desc": "用日向雏田（游戏内）赢一局", "favor": 9, "diff": "⭐⭐"},
+    {"id": 4, "name": "影分身之术", "desc": "在一局内用奥义终结对手", "favor": 9, "diff": "⭐⭐"},
+    {"id": 5, "name": "永不放弃", "desc": "血量低于 10% 时反杀获胜", "favor": 10, "diff": "⭐⭐"},
+    {"id": 6, "name": "柔拳法", "desc": "不用奥义，只用普攻和技能赢一局", "favor": 10, "diff": "⭐⭐⭐"},
+    {"id": 7, "name": "火影的意志", "desc": "用一个忍者连续赢 3 局（三连胜不换人）", "favor": 10, "diff": "⭐⭐⭐"},
+    {"id": 8, "name": "守护重要的人", "desc": "在一局内打出 Perfect（满血获胜）", "favor": 11, "diff": "⭐⭐⭐"},
+    {"id": 9, "name": "雏田的试炼", "desc": "用雏田在一局内穿三", "favor": 11, "diff": "⭐⭐⭐⭐"},
+    {"id": 10, "name": "百裏君的觉悟", "desc": "指定三个不同忍者，一局内各击败一人", "favor": 12, "diff": "⭐⭐⭐⭐⭐"},
+]
+
+# 完成关键词：用户说这些表示任务做完了
+TASK_DONE_WORDS = ["完成", "过了", "穿三", "搞定", "拿下了", "赢了", "打完了", "做到了", "ok", "好了", "perfect", "反杀", "三连胜"]
+
+# 失败/放弃关键词
+TASK_FAIL_WORDS = ["放弃了", "不做了", "太难了", "打不过", "算了", "认输", "输了"]
+
+def load_favor(user_id: str) -> dict:
+    """加载好感度数据"""
+    favor_file = MEMORY_DIR / f"{user_id}_favor.json"
+    if favor_file.exists():
+        try:
+            return json.loads(favor_file.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {"favor": 0, "tasks_done": [], "current_task": 1}
+
+def save_favor(user_id: str, data: dict):
+    """保存好感度数据"""
+    favor_file = MEMORY_DIR / f"{user_id}_favor.json"
+    favor_file.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+def get_favor_phase(favor: int) -> str:
+    """根据好感值返回阶段"""
+    if favor >= 81:
+        return "告白"
+    elif favor >= 51:
+        return "亲密"
+    elif favor >= 21:
+        return "熟悉"
+    else:
+        return "初识"
+
+def get_favor_context(favor_data: dict) -> str:
+    """根据好感度和任务进度生成上下文注入"""
+    favor = favor_data.get("favor", 0)
+    phase = get_favor_phase(favor)
+    tasks_done = favor_data.get("tasks_done", [])
+    current = favor_data.get("current_task", 1)
+
+    ctx = f"""\n## 好感度状态
+- 当前好感值: {favor}/100
+- 好感阶段: {phase}
+- 已完成任务: {len(tasks_done)}/10
+"""
+
+    if current <= 10:
+        task = HINATA_TASKS[current - 1]
+        ctx += f"""- 当前任务: 任务{task['id']}「{task['name']}」难度{task['diff']} — {task['desc']}
+- 百裏君完成任务后会来汇报。他说"完成了/过了/穿三了/搞定了"就是完成了，好感+{task['favor']}
+- 他说"放弃了/打不过/太难了"就是放弃，好感-3
+"""
+
+    if phase == "初识":
+        ctx += "\n现在你跟百裏君还不太熟，说话很害羞、断断续续的。但你已经偷偷喜欢他了。\n"
+    elif phase == "熟悉":
+        ctx += "\n你跟百裏君已经比较熟悉了，说话开始自然一点，会主动问他的修炼情况。\n"
+    elif phase == "亲密":
+        ctx += "\n你跟百裏君已经很亲密了，说话变得坚定温柔，会主动关心他。你的眼神里藏不住对他的喜欢。\n"
+    elif phase == "告白":
+        ctx += "\n你已经到了告白的时刻。在第10个任务完成后，鼓起全部勇气说出心里话。这是你等了很久的瞬间。\n"
+
+    return ctx
+
+def detect_task_result(user_msg: str) -> str | None:
+    """检测用户消息是汇报任务完成、放弃、还是一般聊天"""
+    msg = user_msg.lower()
+    if any(kw in msg for kw in TASK_FAIL_WORDS):
+        return "fail"
+    if any(kw in msg for kw in TASK_DONE_WORDS):
+        return "done"
+    return None
+
 # ==================== LLM 调用 ====================
 def call_llm(messages: list) -> str:
     key = DEEPSEEK_KEY
@@ -611,17 +699,73 @@ def _handle_message(user_id: str, nickname: str, raw_message: str, group_id: str
         print(f"  {BOT_NAME} → {nickname}: {reply}", flush=True)
         return
 
+    if user_msg.strip() in ["/好感", "/进度", "/任务"]:
+        favor_data = load_favor(user_id)
+        f = favor_data.get("favor", 0)
+        phase = get_favor_phase(f)
+        done = len(favor_data.get("tasks_done", []))
+        current = favor_data.get("current_task", 1)
+        if current <= 10:
+            task = HINATA_TASKS[current - 1]
+            reply = f"【雏田攻略进度】\n好感值: {f}/100 ({phase}阶段)\n已完成: {done}/10 个任务\n当前任务{task['id']}: {task['name']} {task['diff']}\n{task['desc']}"
+        else:
+            reply = f"【雏田攻略进度】\n好感值: {f}/100 ({phase}阶段)\n已完成: {done}/10 个任务\n全部任务已完成！"
+        target = group_id if is_group else user_id
+        send_qq_message(target, reply, "group" if is_group else "private")
+        print(f"  {BOT_NAME} → {nickname}: {reply}", flush=True)
+        return
+
     # 判断是不是主人本人
     is_owner = (user_id == OWNER_QQ)
 
     # 构建上下文（含长期记忆摘要 + 近期对话）
     system_prompt = get_system_prompt(is_owner, nickname)
-    messages = build_context(user_id, system_prompt, f"{nickname}: {user_msg}")
 
-    # 语音触发：只有用户明确要求时才临时注入语音指令
-    if any(kw in user_msg for kw in VOICE_TRIGGERS):
+    # 雏田攻略模式：好感度 + 任务系统
+    hinata_mode = _web_cfg.get("ACTIVE_PERSONALITY") == "hinata" and is_owner
+    if hinata_mode:
+        favor_data = load_favor(user_id)
+        task_result = detect_task_result(user_msg)
+
+        if task_result == "done":
+            current = favor_data.get("current_task", 1)
+            if current <= 10 and current not in favor_data.get("tasks_done", []):
+                task = HINATA_TASKS[current - 1]
+                favor_data["tasks_done"].append(current)
+                favor_data["favor"] = min(100, favor_data.get("favor", 0) + task["favor"])
+                favor_data["current_task"] = current + 1
+                save_favor(user_id, favor_data)
+                print(f"  [雏田] 任务{current}完成！好感+{task['favor']}，当前好感{favor_data['favor']}/100", flush=True)
+                # 注入任务完成提示
+                messages = build_context(user_id, system_prompt, f"{nickname}: {user_msg}")
+                messages.append({"role": "system", "content": f"[任务完成] 百裏君刚才完成了任务{current}「{task['name']}」！请祝贺他，好感+{task['favor']}，当前好感{favor_data['favor']}/100。告诉他下一个任务是什么。"})
+            else:
+                messages = build_context(user_id, system_prompt, f"{nickname}: {user_msg}")
+        elif task_result == "fail":
+            favor_data["favor"] = max(0, favor_data.get("favor", 0) - 3)
+            save_favor(user_id, favor_data)
+            print(f"  [雏田] 任务放弃，好感-3，当前好感{favor_data['favor']}/100", flush=True)
+            messages = build_context(user_id, system_prompt, f"{nickname}: {user_msg}")
+            messages.append({"role": "system", "content": f"[任务放弃] 百裏君放弃了当前任务。请温柔地鼓励他重新挑战，不要责备他。好感-3，当前好感{favor_data['favor']}/100。"})
+        else:
+            messages = build_context(user_id, system_prompt, f"{nickname}: {user_msg}")
+
+        # 注入好感度上下文
+        favor_ctx = get_favor_context(favor_data)
+        messages.insert(1, {"role": "system", "content": favor_ctx})
+
+        # 告白触发
+        if favor_data["favor"] >= 100 and len(favor_data.get("tasks_done", [])) >= 10:
+            messages.append({"role": "system", "content": "[最终指令] 10个任务全部完成，好感已满。这是你告白的时刻。请用雏田的方式，鼓起全部勇气，对百裏君说出你的心意。并且在回复开头加上 [语音] 标记。"})
+            print(f"  [雏田] 💕 攻略成功！触发告白", flush=True)
+    else:
+        messages = build_context(user_id, system_prompt, f"{nickname}: {user_msg}")
+
+    # 语音触发检测
+    force_voice = any(kw in user_msg for kw in VOICE_TRIGGERS)
+    if force_voice:
         messages.append({"role": "system", "content": VOICE_INJECTION})
-        print(f"  [语音] 检测到语音触发词，注入语音指令", flush=True)
+        print(f"  [语音] 检测到语音触发词", flush=True)
 
     # 调 LLM
     reply = call_llm(messages)
@@ -637,23 +781,21 @@ def _handle_message(user_id: str, nickname: str, raw_message: str, group_id: str
         if new_mood != "neutral":
             print(f"  [情绪] → {new_mood}", flush=True)
 
-    # 检测 [语音] 标记
-    want_voice = reply.startswith("[语音]")
-    if want_voice:
-        reply = reply.replace("[语音]", "", 1).strip()
+    # 清洗回复（去掉可能残留的 [语音] 标记和括号动作描述）
+    clean_reply = reply.replace("[语音]", "", 1).strip()
 
-    # 把 AI 回复里的 [爱心] 等文字转成 QQ CQ 码
-    reply_cq = translate_outgoing(reply)
+    # 发送
     target = group_id if is_group else user_id
     msg_type = "group" if is_group else "private"
 
-    if want_voice:
-        # 后台生成语音并发送
-        print(f"  {BOT_NAME} → {nickname}: [语音] {reply}", flush=True)
-        send_voice_async(target, reply, msg_type)
+    if force_voice:
+        # 强制发语音——不管 AI 有没有加 [语音]，检测到触发词就发
+        print(f"  {BOT_NAME} → {nickname}: [语音] {clean_reply}", flush=True)
+        send_voice_async(target, clean_reply, msg_type)
     else:
+        reply_cq = translate_outgoing(clean_reply)
         send_qq_message(target, reply_cq, msg_type)
-        print(f"  {BOT_NAME} → {nickname}: {reply}", flush=True)
+        print(f"  {BOT_NAME} → {nickname}: {clean_reply}", flush=True)
 
 # ==================== WebSocket 服务器（反向 WebSocket） ====================
 async def handle_ws(websocket):
