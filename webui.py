@@ -20,13 +20,22 @@ NAPCAT_HTTP = "http://127.0.0.1:3000"  # 用于状态检测
 
 # 默认配置
 DEFAULT_CONFIG = {
+    # ── AI 模型 ──
+    "API_PROVIDER": "deepseek",
+    "API_BASE": "https://api.deepseek.com",
+    "API_KEY": "",
+    "API_MODEL": "deepseek-chat",
+    # ── 兼容旧版 ──
     "DEEPSEEK_KEY": "",
+    # ── QQ ──
     "OWNER_QQ": "",
     "OWNER_NAME": "主人",
     "BOT_NAME": "百约",
     "BOT_QQ": "",
+    # ── 语音 ──
     "VOICE_VOICE": "zh-CN-XiaoxiaoNeural",
     "VOICE_ENABLED": True,
+    # ── 伴侣模式 ──
     "COMPANION_TYPE": "girlfriend",
     "PROMPT_OWNER": "",
     "PROMPT_OTHER": "",
@@ -861,11 +870,36 @@ body {
     <div class="page-desc">设置 API Key 和 QQ 账号绑定</div>
 
     <div class="card">
-      <div class="card-header"><span class="dot pink"></span> DeepSeek API</div>
+      <div class="card-header"><span class="dot pink"></span> AI 模型</div>
+      <div class="field">
+        <label>模型提供商</label>
+        <select id="cfg-API_PROVIDER" onchange="onProviderChange()">
+          <option value="deepseek">DeepSeek</option>
+          <option value="openai">OpenAI</option>
+          <option value="siliconflow">硅基流动 (SiliconFlow)</option>
+          <option value="zhipu">智谱 (GLM)</option>
+          <option value="dashscope">通义千问 (DashScope)</option>
+          <option value="moonshot">月之暗面 (Moonshot)</option>
+          <option value="groq">Groq（免费）</option>
+          <option value="ollama">Ollama（本地）</option>
+          <option value="custom">自定义</option>
+        </select>
+        <div class="hint">选择你用的 AI 服务，Base URL 和模型名会自动填充</div>
+      </div>
+      <div class="field">
+        <label>Base URL</label>
+        <input type="text" id="cfg-API_BASE" placeholder="https://api.deepseek.com">
+        <div class="hint">API 地址，一般不用改</div>
+      </div>
       <div class="field">
         <label>API Key</label>
-        <input type="password" id="cfg-DEEPSEEK_KEY" placeholder="sk-...">
-        <div class="hint">在 <code>platform.deepseek.com</code> 注册获取，充值10元能用很久</div>
+        <input type="password" id="cfg-API_KEY" placeholder="sk-...">
+        <div class="hint" id="hint-apikey">在对应平台注册获取，Ollama 可留空</div>
+      </div>
+      <div class="field">
+        <label>模型名</label>
+        <input type="text" id="cfg-API_MODEL" placeholder="deepseek-chat">
+        <div class="hint">如 deepseek-chat / gpt-4o / qwen2.5:7b</div>
       </div>
     </div>
 
@@ -1098,7 +1132,10 @@ async function loadAll() {
 }
 
 function renderAll() {
-  setVal('cfg-DEEPSEEK_KEY', config.DEEPSEEK_KEY||'');
+  setVal('cfg-API_PROVIDER', config.API_PROVIDER||'deepseek');
+  setVal('cfg-API_BASE', config.API_BASE||'');
+  setVal('cfg-API_KEY', config.API_KEY||config.DEEPSEEK_KEY||'');
+  setVal('cfg-API_MODEL', config.API_MODEL||'');
   setVal('cfg-OWNER_QQ', config.OWNER_QQ||'');
   setVal('cfg-OWNER_NAME', config.OWNER_NAME||'');
   setVal('cfg-BOT_NAME', config.BOT_NAME||'');
@@ -1266,10 +1303,35 @@ function toggleVoice() {
 // ── Save ──
 async function saveConfig() {
   await postConfig({
-    DEEPSEEK_KEY:getVal('cfg-DEEPSEEK_KEY'), OWNER_QQ:getVal('cfg-OWNER_QQ'),
-    OWNER_NAME:getVal('cfg-OWNER_NAME'), BOT_NAME:getVal('cfg-BOT_NAME'), BOT_QQ:getVal('cfg-BOT_QQ'),
+    API_PROVIDER:getVal('cfg-API_PROVIDER'), API_BASE:getVal('cfg-API_BASE'),
+    API_KEY:getVal('cfg-API_KEY'), API_MODEL:getVal('cfg-API_MODEL'),
+    OWNER_QQ:getVal('cfg-OWNER_QQ'), OWNER_NAME:getVal('cfg-OWNER_NAME'),
+    BOT_NAME:getVal('cfg-BOT_NAME'), BOT_QQ:getVal('cfg-BOT_QQ'),
     COMPANION_TYPE: companionType,
   }, '配置');
+}
+
+// ── 模型提供商切换：自动填充 Base URL 和模型名 ──
+const API_PRESETS = {
+  deepseek:    {base:'https://api.deepseek.com',                   model:'deepseek-chat',          hint:'注册获取 Key，充值10元能用很久'},
+  openai:      {base:'https://api.openai.com/v1',                  model:'gpt-4o',                 hint:'在 platform.openai.com 注册获取'},
+  siliconflow: {base:'https://api.siliconflow.cn/v1',              model:'Qwen/Qwen3-8B',          hint:'国内平台，注册送额度，模型超多'},
+  zhipu:       {base:'https://open.bigmodel.cn/api/paas/v4',       model:'glm-4',                  hint:'智谱AI，注册送额度，GLM系列模型'},
+  dashscope:   {base:'https://dashscope.aliyuncs.com/compatible-mode/v1', model:'qwen-plus',   hint:'阿里通义千问，有免费额度'},
+  moonshot:    {base:'https://api.moonshot.cn/v1',                 model:'moonshot-v1-8k',         hint:'月之暗面 Kimi，注册送额度'},
+  groq:        {base:'https://api.groq.com/openai/v1',             model:'llama-4-scout-17b-16e-instruct', hint:'国外平台，免费但需梯子，速度极快'},
+  ollama:      {base:'http://localhost:11434/v1',                  model:'qwen2.5:7b',             hint:'本地运行，无需 Key，留空即可'},
+  custom:      {base:'', model:'', hint:'手动填入你的 API 地址和 Key'},
+};
+
+function onProviderChange() {
+  const p = document.getElementById('cfg-API_PROVIDER').value;
+  const preset = API_PRESETS[p] || {};
+  if (p !== 'custom') {
+    document.getElementById('cfg-API_BASE').value = preset.base || '';
+    document.getElementById('cfg-API_MODEL').value = preset.model || '';
+  }
+  document.getElementById('hint-apikey').textContent = preset.hint || '';
 }
 
 // savePersonality / resetPersonality 已被卡片系统取代（saveCurrentCard / deleteCard）

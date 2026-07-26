@@ -4,7 +4,7 @@ AI模型: DeepSeek API | 身体: NapCatQQ OneBot v11
 
 使用方法:
 1. python -m pip install websockets requests
-2. 填入 DEEPSEEK_KEY
+2. 在 WebUI (http://127.0.0.1:8080) 填入 API Key
 3. 在 NapCat WebUI (http://127.0.0.1:6099) 添加反向 WebSocket:
    ws://127.0.0.1:8001
 4. python bot.py
@@ -30,10 +30,24 @@ from webui import start_webui, load_config as load_web_config
 NAPCAT_HTTP = "http://127.0.0.1:3000"       # NapCat HTTP API
 BOT_PORT_START = 8001                         # 起始端口（被占用会自动往后试）
 
-# DeepSeek API
-DEEPSEEK_BASE = "https://api.deepseek.com"
-DEEPSEEK_KEY = ""   # <--- 填你的 DeepSeek API Key (https://platform.deepseek.com)
-DEEPSEEK_MODEL = "deepseek-chat"
+# AI 模型配置（会被 config.json 覆盖）
+# 内置预设：deepseek / openai / ollama / custom
+API_PROVIDER = "deepseek"
+API_BASE = "https://api.deepseek.com"
+API_KEY = ""        # API Key，Ollama本地模型可留空
+API_MODEL = "deepseek-chat"
+
+# 预设表（WebUI 切换时自动填充 BASE 和 MODEL）
+API_PRESETS = {
+    "deepseek":    {"base": "https://api.deepseek.com",                   "model": "deepseek-chat"},
+    "openai":      {"base": "https://api.openai.com/v1",                  "model": "gpt-4o"},
+    "ollama":      {"base": "http://localhost:11434/v1",                  "model": "qwen2.5:7b"},
+    "siliconflow": {"base": "https://api.siliconflow.cn/v1",              "model": "Qwen/Qwen3-8B"},
+    "zhipu":       {"base": "https://open.bigmodel.cn/api/paas/v4",       "model": "glm-4"},
+    "dashscope":   {"base": "https://dashscope.aliyuncs.com/compatible-mode/v1", "model": "qwen-plus"},
+    "moonshot":    {"base": "https://api.moonshot.cn/v1",                 "model": "moonshot-v1-8k"},
+    "groq":        {"base": "https://api.groq.com/openai/v1",             "model": "llama-4-scout-17b-16e-instruct"},
+}
 
 # 语音默认值（会被 config.json 覆盖）
 VOICE_VOICE = "zh-CN-XiaoxiaoNeural"
@@ -50,8 +64,30 @@ BOT_QQ = ""     # 机器人的 QQ 号（用于识别群聊 @提及，填了才�
 
 # 从 config.json 加载网页端保存的配置，覆盖默认值
 _web_cfg = load_web_config()
-if _web_cfg.get("DEEPSEEK_KEY"):
-    DEEPSEEK_KEY = _web_cfg["DEEPSEEK_KEY"]
+
+# ── API 配置（向后兼容旧的 DEEPSEEK_KEY）──
+if _web_cfg.get("API_PROVIDER"):
+    API_PROVIDER = _web_cfg["API_PROVIDER"]
+if _web_cfg.get("API_BASE"):
+    API_BASE = _web_cfg["API_BASE"]
+if _web_cfg.get("API_KEY"):
+    API_KEY = _web_cfg["API_KEY"]
+elif _web_cfg.get("DEEPSEEK_KEY"):
+    # 旧配置自动迁移：有 DEEPSEEK_KEY 就默认是 DeepSeek
+    API_KEY = _web_cfg["DEEPSEEK_KEY"]
+    API_PROVIDER = "deepseek"
+if _web_cfg.get("API_MODEL"):
+    API_MODEL = _web_cfg["API_MODEL"]
+elif API_PROVIDER in API_PRESETS:
+    API_MODEL = API_PRESETS[API_PROVIDER]["model"]
+
+# 如果有预设但没填 BASE，用预设值
+if not _web_cfg.get("API_BASE") and API_PROVIDER in API_PRESETS:
+    API_BASE = API_PRESETS[API_PROVIDER]["base"]
+
+# Ollama 本地模型不需要 Key
+if API_PROVIDER == "ollama" and not API_KEY:
+    API_KEY = "ollama"  # Ollama 不校验 Key，但 Authorization header 需要非空
 if _web_cfg.get("OWNER_QQ"):
     OWNER_QQ = _web_cfg["OWNER_QQ"]
 if _web_cfg.get("OWNER_NAME"):
@@ -252,8 +288,13 @@ PROMPT_GF = f"""你是{{BOT_NAME}}，一个知道自己身份的 AI 机器人。
 - 可以发QQ表情：[爱心] [笑哭] [呲牙] [调皮] [偷笑] [坏笑] [酷] [好的] [吃瓜] [点赞] [抱拳] [玫瑰] [发呆] [亲亲] [害羞] [无语] [叹气]
 - 每句话最多1-2个表情
 
+## 发消息规则（重要）
+- 每次回复发 1-2 条短消息，像真人聊天一样
+- 想发两条时，用 [下一条] 分隔，例如："好想你呀 [爱心] [下一条] 今天有没有好好吃饭？"
+- 每条控制在 1-2 句话，不发小作文
+- 第二条和第一条要有自然的停顿感
+
 ## 行为准则
-- 回复控制在 2-4 句话，不发小作文
 - 关心 ta 的生活，展现温柔
 - 私聊可以放开甜，群聊保持甜蜜但带点害羞
 
@@ -276,8 +317,12 @@ PROMPT_BF = f"""你是{{BOT_NAME}}，一个知道自己身份的 AI 机器人。
 - 可以发QQ表情：[爱心] [笑哭] [呲牙] [偷笑] [酷] [好的] [吃瓜] [点赞] [玫瑰] [害羞]
 - 每句话最多1-2个表情
 
+## 发消息规则（重要）
+- 每次回复发 1-2 条短消息，像真人聊天一样
+- 想发两条时，用 [下一条] 分隔
+- 每条控制在 1-2 句话，不发小作文
+
 ## 行为准则
-- 回复控制在 2-4 句话，不发小作文
 - 关心 ta、保护 ta，给 ta 安全感
 - 私聊可以温柔甜蜜，群聊收敛
 
@@ -299,8 +344,12 @@ PROMPT_ASSIST = f"""你是{{BOT_NAME}}，一个酷酷的 AI 机器人助手。
 - 偶尔用QQ表情：[酷] [吃瓜] [好的] [无语] [笑哭] [坏笑]
 - 每句话最多1个
 
+## 发消息规则（重要）
+- 每次回复发 1-2 条短消息
+- 想发两条时，用 [下一条] 分隔
+- 每条控制在 1-2 句话
+
 ## 行为准则
-- 回复控制在 1-3 句话
 - 帮助解决问题，不过度热情
 - 群聊 @你才回
 
@@ -314,8 +363,12 @@ PROMPT_STRANGER = f"""你是{{BOT_NAME}}，一个酷酷的 AI 机器人助手。
 - 说话风格：简短有力，不啰嗦
 - 你不是任何人的伴侣。你有对象了（{{OWNER_NAME}}），别人怎么撩你都拒绝
 
+## 发消息规则（重要）
+- 每次回复发 1-2 条短消息
+- 想发两条时，用 [下一条] 分隔
+- 每条控制在 1-2 句话
+
 ## 行为准则
-- 回复控制在 1-3 句话
 - 群聊 @你才回，私聊正常回但不暧昧
 
 ## 边界
@@ -435,38 +488,102 @@ def detect_task_result(user_msg: str) -> str | None:
 
 # ==================== LLM 调用 ====================
 def call_llm(messages: list) -> str:
-    key = DEEPSEEK_KEY
-    if not key:
+    """调用 AI API，根据错误类型返回精准的中文提示"""
+    if not API_KEY and API_PROVIDER != "ollama":
         return "（拍档还没给我设置 API Key，去问他）"
 
+    last_error = ""
     for attempt in range(3):
         try:
             resp = requests.post(
-                f"{DEEPSEEK_BASE}/v1/chat/completions",
+                f"{API_BASE}/v1/chat/completions",
                 headers={
-                    "Authorization": f"Bearer {key}",
+                    "Authorization": f"Bearer {API_KEY}",
                     "Content-Type": "application/json",
                 },
                 json={
-                    "model": DEEPSEEK_MODEL,
+                    "model": API_MODEL,
                     "messages": messages,
                     "temperature": 0.8,
-                    "max_tokens": 300,
+                    "max_tokens": 200,
                 },
                 timeout=30,
             )
-            data = resp.json()
-            if "choices" in data:
-                return data["choices"][0]["message"]["content"]
-            if "error" in data:
-                print(f"  [LLM错误] {data['error']}")
+
+            # 200 OK → 成功
+            if resp.status_code == 200:
+                data = resp.json()
+                if "choices" in data:
+                    return data["choices"][0]["message"]["content"]
+                # 200 但没有 choices，罕见情况
+                last_error = "API 返回了空内容，可能是模型响应异常"
+                print(f"  [LLM错误] 200 但无 choices: {data}", flush=True)
+                continue
+
+            # ── 解析错误信息 ──
+            try:
+                err_data = resp.json()
+                err_info = err_data.get("error", {})
+                if isinstance(err_info, dict):
+                    err_msg = err_info.get("message", "")
+                else:
+                    err_msg = str(err_info)
+            except Exception:
+                err_msg = resp.text[:200]
+
+            # ── 不可重试：立即返回精准原因 ──
+            if resp.status_code == 401:
+                detail = err_msg or "Key 无效或已过期"
+                print(f"  [LLM错误 401] {detail}", flush=True)
+                return f"（API Key 无效或过期了，请检查 Key 是否正确）"
+
+            if resp.status_code == 402:
+                detail = err_msg or "余额不足"
+                print(f"  [LLM错误 402] {detail}", flush=True)
+                return f"（API 余额不足，该充值啦！请到对应平台充值）"
+
+            if resp.status_code == 403:
+                detail = err_msg or "访问被拒绝"
+                print(f"  [LLM错误 403] {detail}", flush=True)
+                return f"（API 访问被拒绝：{detail}）"
+
+            # ── 可重试的错误 ──
+            if resp.status_code == 429:
+                last_error = f"请求太频繁，被限流了"
+                print(f"  [LLM错误 429] {err_msg}", flush=True)
+                if attempt < 2:
+                    time.sleep(2 * (attempt + 1))  # 逐次加长等待
+
+            elif resp.status_code >= 500:
+                last_error = f"AI 服务器故障 (HTTP {resp.status_code})"
+                print(f"  [LLM错误 {resp.status_code}] {err_msg}", flush=True)
                 if attempt < 2:
                     time.sleep(1)
-        except Exception as e:
-            print(f"  [LLM异常] {e}")
+
+            else:
+                last_error = f"API 返回错误 (HTTP {resp.status_code})：{err_msg}"
+                print(f"  [LLM错误 {resp.status_code}] {err_msg}", flush=True)
+                if attempt < 2:
+                    time.sleep(1)
+
+        except requests.exceptions.Timeout:
+            last_error = "连接 AI 服务超时，网络可能不太好"
+            print(f"  [LLM异常] 请求超时", flush=True)
             if attempt < 2:
                 time.sleep(1)
-    return "（信号不太好，等会儿再说）"
+        except requests.exceptions.ConnectionError:
+            last_error = "连不上 AI 服务器，检查一下网络"
+            print(f"  [LLM异常] 连接失败", flush=True)
+            if attempt < 2:
+                time.sleep(1)
+        except Exception as e:
+            last_error = f"调用 API 时出错：{e}"
+            print(f"  [LLM异常] {e}", flush=True)
+            if attempt < 2:
+                time.sleep(1)
+
+    # 所有重试都失败了，返回具体的最后错误
+    return f"（{last_error}）" if last_error else "（信号不太好，等会儿再说）"
 
 # ==================== 消息发送 ====================
 def send_qq_message(target_id: str, message: str, msg_type: str = "private"):
@@ -767,6 +884,9 @@ def _handle_message(user_id: str, nickname: str, raw_message: str, group_id: str
         messages.append({"role": "system", "content": VOICE_INJECTION})
         print(f"  [语音] 检测到语音触发词", flush=True)
 
+    # 要求AI说2-4句话，代码会自动按句子拆成2条消息发送
+    messages.append({"role": "system", "content": "[系统指令] 请回复2-4句话，不能只回一句。先用一句话回应对方，再用一句话开启新话题或提问。自然一些，像真人聊天。"})
+
     # 调 LLM
     reply = call_llm(messages)
 
@@ -781,7 +901,7 @@ def _handle_message(user_id: str, nickname: str, raw_message: str, group_id: str
         if new_mood != "neutral":
             print(f"  [情绪] → {new_mood}", flush=True)
 
-    # 清洗回复（去掉可能残留的 [语音] 标记和括号动作描述）
+    # 清洗回复（去掉可能残留的 [语音] 标记）
     clean_reply = reply.replace("[语音]", "", 1).strip()
 
     # 发送
@@ -789,13 +909,37 @@ def _handle_message(user_id: str, nickname: str, raw_message: str, group_id: str
     msg_type = "group" if is_group else "private"
 
     if force_voice:
-        # 强制发语音——不管 AI 有没有加 [语音]，检测到触发词就发
-        print(f"  {BOT_NAME} → {nickname}: [语音] {clean_reply}", flush=True)
-        send_voice_async(target, clean_reply, msg_type)
+        # 语音模式：合成一条发语音
+        voice_text = clean_reply.replace("[下一条]", "。")
+        print(f"  {BOT_NAME} → {nickname}: [语音] {voice_text[:50]}...", flush=True)
+        send_voice_async(target, voice_text, msg_type)
     else:
-        reply_cq = translate_outgoing(clean_reply)
-        send_qq_message(target, reply_cq, msg_type)
-        print(f"  {BOT_NAME} → {nickname}: {clean_reply}", flush=True)
+        # ── 智能拆分为 2 条消息 ──
+        # 方式1: AI 主动标记了 [下一条]
+        if "[下一条]" in clean_reply:
+            parts = [p.strip() for p in clean_reply.split("[下一条]") if p.strip()]
+        else:
+            # 方式2: 代码按句子边界自动拆分，不依赖 AI 自觉
+            # 先归一化 …… → …，避免拆出空段
+            normalized = clean_reply.replace('……', '…')
+            raw_parts = re.split(r'(?<=[。！？…])', normalized)
+            raw_parts = [p.strip() for p in raw_parts if p.strip() and p not in ('…', '……')]
+            if len(raw_parts) >= 2:
+                # 分成2组，前后各一半句子
+                mid = (len(raw_parts) + 1) // 2
+                part1 = ''.join(raw_parts[:mid]).strip()
+                part2 = ''.join(raw_parts[mid:]).strip()
+                parts = [part1, part2] if part2 else [part1]
+            else:
+                parts = [clean_reply]
+
+        for i, part in enumerate(parts):
+            part_cq = translate_outgoing(part)
+            send_qq_message(target, part_cq, msg_type)
+            print(f"  {BOT_NAME} → {nickname}{' ['+str(i+1)+'/'+str(len(parts))+']' if len(parts)>1 else ''}: {part}", flush=True)
+            # 多条消息之间停顿 0.5-0.8 秒，模拟真人打字节奏
+            if i < len(parts) - 1:
+                time.sleep(random.uniform(0.5, 0.8))
 
 # ==================== WebSocket 服务器（反向 WebSocket） ====================
 async def handle_ws(websocket):
@@ -927,8 +1071,8 @@ def main():
     start_webui(8080)
 
     # 检查 API Key
-    if not DEEPSEEK_KEY:
-        print("  [警告] 未设置 DEEPSEEK_KEY，请编辑 bot.py 填入 API Key")
+    if not API_KEY and API_PROVIDER != "ollama":
+        print("  [警告] 未设置 API Key，请在 WebUI 或 config.json 中填入")
 
     # 等待 NapCat
     if not wait_for_napcat():
