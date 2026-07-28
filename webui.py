@@ -41,6 +41,9 @@ DEFAULT_CONFIG = {
     "PROMPT_OTHER": "",
     "_personalities": [],
     "ACTIVE_PERSONALITY": "default",
+    # ── 私密模式 ──
+    "PRIVATE_MODE": False,
+    "PROMPT_OWNER_FILE": "prompt_private.txt",
 }
 
 # 可用音色（edge-tts 微软免费 TTS，全部实测可用）
@@ -982,6 +985,31 @@ body {
           </div>
         </div>
       </div>
+
+      <!-- ── 私密模式（折叠区）── -->
+      <div class="card" style="margin-top:16px;border:1px dashed #e5e7eb">
+        <div class="card-header" onclick="togglePrivate()" style="cursor:pointer;user-select:none;display:flex;justify-content:space-between;align-items:center">
+          <span><span id="private-arrow" style="display:inline-block;transition:0.2s">▶</span> 🔞 私密模式 <span style="font-size:0.7rem;color:#9ca3af">（成人内容，默认关闭）</span></span>
+          <span id="private-status" style="font-size:0.75rem;color:#9ca3af"></span>
+        </div>
+        <div id="private-body" style="display:none;padding:16px;border-top:1px solid #f3f4f6">
+          <div style="background:#fef2f2;padding:12px;border-radius:8px;margin-bottom:12px;font-size:0.8rem;color:#991b1b">
+            ⚠️ 此功能包含成人/亲密内容，仅适合18岁以上用户。开启后私密文件会覆盖所有其他人格设定。
+          </div>
+          <div class="field">
+            <label>启用私密模式</label>
+            <div class="toggle" id="toggle-private" onclick="togglePrivateMode()" style="width:44px;height:24px;border-radius:99px;background:#d1d5db;cursor:pointer;position:relative;transition:0.2s">
+              <div style="width:18px;height:18px;border-radius:50%;background:white;position:absolute;top:3px;left:3px;transition:0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2)"></div>
+            </div>
+            <input type="checkbox" id="cfg-PRIVATE_MODE" style="display:none">
+          </div>
+          <div class="field">
+            <label>私密人格文件</label>
+            <input type="text" id="cfg-PROMPT_OWNER_FILE" placeholder="prompt_private.txt">
+            <div class="hint">在项目目录下创建该文件，写入你想要的私密人格提示词。此文件不会上传到 GitHub。</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1143,6 +1171,7 @@ function renderAll() {
   companionType = config.COMPANION_TYPE || 'girlfriend';
   document.getElementById('cfg-VOICE_ENABLED').checked = !!config.VOICE_ENABLED;
   document.getElementById('toggle-voice').classList.toggle('on', !!config.VOICE_ENABLED);
+  renderPrivateMode();
   // 加载人格卡片
   cards = config._personalities || [];
   if (!cards.length) cards = JSON.parse(JSON.stringify(BUILTIN_CARDS));
@@ -1298,6 +1327,51 @@ function toggleVoice() {
   const on = !document.getElementById('toggle-voice').classList.contains('on');
   document.getElementById('toggle-voice').classList.toggle('on',on);
   document.getElementById('cfg-VOICE_ENABLED').checked = on;
+}
+
+// ── 私密模式 ──
+let privateExpanded = false;
+function togglePrivate() {
+  privateExpanded = !privateExpanded;
+  document.getElementById('private-body').style.display = privateExpanded ? 'block' : 'none';
+  document.getElementById('private-arrow').textContent = privateExpanded ? '▼' : '▶';
+}
+
+function togglePrivateMode() {
+  const current = document.getElementById('cfg-PRIVATE_MODE').checked;
+  if (!current) {
+    // 开启前弹窗警告
+    if (!confirm('⚠️ 私密模式包含成人/亲密内容\n\n仅适合18岁以上用户。\n开启后私密文件会覆盖所有其他人格设定。\n\n确定开启？')) {
+      return;
+    }
+  }
+  const on = !current;
+  document.getElementById('cfg-PRIVATE_MODE').checked = on;
+  const toggle = document.getElementById('toggle-private');
+  toggle.style.background = on ? '#f472b6' : '#d1d5db';
+  toggle.firstElementChild.style.left = on ? '23px' : '3px';
+  document.getElementById('private-status').textContent = on ? '🔞 已开启' : '';
+  // 自动展开以显示配置
+  if (on && !privateExpanded) togglePrivate();
+  // 自动保存
+  savePrivateMode();
+}
+
+async function savePrivateMode() {
+  await postConfig({
+    PRIVATE_MODE: document.getElementById('cfg-PRIVATE_MODE').checked,
+    PROMPT_OWNER_FILE: getVal('cfg-PROMPT_OWNER_FILE') || 'prompt_private.txt',
+  }, '私密模式');
+}
+
+function renderPrivateMode() {
+  const on = !!config.PRIVATE_MODE;
+  document.getElementById('cfg-PRIVATE_MODE').checked = on;
+  const toggle = document.getElementById('toggle-private');
+  toggle.style.background = on ? '#f472b6' : '#d1d5db';
+  toggle.firstElementChild.style.left = on ? '23px' : '3px';
+  document.getElementById('private-status').textContent = on ? '🔞 已开启' : '';
+  setVal('cfg-PROMPT_OWNER_FILE', config.PROMPT_OWNER_FILE || 'prompt_private.txt');
 }
 
 // ── Save ──

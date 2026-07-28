@@ -120,12 +120,19 @@ COMPANION_TYPE = _web_cfg.get("COMPANION_TYPE", "girlfriend")
 CUSTOM_PROMPT_OWNER = ""
 CUSTOM_PROMPT_OTHER = ""
 
-# 1) 私密文件（最高优先级）
-_prompt_file = _web_cfg.get("PROMPT_OWNER_FILE", "")
-if _prompt_file:
-    _pf = Path(__file__).parent / _prompt_file
-    if _pf.exists():
-        CUSTOM_PROMPT_OWNER = _pf.read_text(encoding="utf-8").strip()
+# 1) 私密文件（最高优先级，需在 WebUI 手动开启私密模式）
+PRIVATE_MODE = _web_cfg.get("PRIVATE_MODE", False)
+if PRIVATE_MODE:
+    _prompt_file = _web_cfg.get("PROMPT_OWNER_FILE", "prompt_private.txt")
+    if _prompt_file:
+        _pf = Path(__file__).parent / _prompt_file
+        if _pf.exists():
+            CUSTOM_PROMPT_OWNER = _pf.read_text(encoding="utf-8").strip()
+            print(f"  [配置] 🔞 私密模式已开启，加载: {_prompt_file}", flush=True)
+        else:
+            print(f"  [配置] ⚠️ 私密模式已开启但文件不存在: {_prompt_file}", flush=True)
+    else:
+        print(f"  [配置] ⚠️ 私密模式已开启但未指定文件", flush=True)
 
 # 2) 卡片系统：查找当前激活的人格卡片
 if not CUSTOM_PROMPT_OWNER:
@@ -137,6 +144,16 @@ if not CUSTOM_PROMPT_OWNER:
                 CUSTOM_PROMPT_OWNER = c.get("prompt_owner", "")
                 CUSTOM_PROMPT_OTHER = c.get("prompt_other", "")
                 print(f"  [配置] 加载人格卡片: {c.get('name', '?')} (id={_active_id})", flush=True)
+                # 检测角色冲突
+                card_name = c.get('name', '')
+                role_hint = ""
+                if "女友" in card_name:
+                    role_hint = "girlfriend"
+                elif "男友" in card_name:
+                    role_hint = "boyfriend"
+                if role_hint and role_hint != COMPANION_TYPE:
+                    print(f"  [警告] ⚠️ 人格卡片是「{card_name}」但伴侣模式选了「{COMPANION_TYPE}」，角色冲突！", flush=True)
+                    print(f"  [建议] 去 WebUI 把伴侣模式切换为一致，或者换一张匹配的人格卡片", flush=True)
                 break
 
 # 3) 兼容旧的 PROMPT_OWNER 字段
@@ -148,7 +165,7 @@ if not CUSTOM_PROMPT_OTHER:
 # 调试：打印实际使用的人格配置
 print(f"  [配置] 伴侣模式: {COMPANION_TYPE}", flush=True)
 print(f"  [配置] 自定义人格: {'有' if CUSTOM_PROMPT_OWNER else '无(用预设)'}", flush=True)
-print(f"  [配置] 私密文件: {_web_cfg.get('PROMPT_OWNER_FILE', '无')}", flush=True)
+print(f"  [配置] 私密模式: {'🔞 开启' if PRIVATE_MODE else '关闭'}", flush=True)
 
 # 戳一戳回复词库
 POKE_REPLIES_OWNER = [
@@ -900,9 +917,9 @@ def _handle_message(user_id: str, nickname: str, raw_message: str, group_id: str
         messages.append({"role": "system", "content": VOICE_INJECTION})
         print(f"  [语音] 检测到语音触发词", flush=True)
 
-    # 要求AI说2-4句话，代码会自动按句子拆成2条消息发送
-    sticker_hint = f"你可以发表情包，可选标签：{'/'.join(STICKER_TAGS)}。想发时写 [贴纸:标签]，比如 [贴纸:害羞]。每轮最多一张，放在回复开头。"
-    messages.append({"role": "system", "content": f"[系统指令] 1. 禁止用括号描述动作或心理。2. 回复2-4句话，像真人发QQ消息一样自然。3. {sticker_hint}"})
+    # ── 核心设定（最高优先级）──
+    role = "男朋友" if COMPANION_TYPE == "boyfriend" else ("女朋友" if COMPANION_TYPE == "girlfriend" else "助手")
+    messages.append({"role": "system", "content": f"[最高优先级] 你是{nickname}的{role}。像真人发QQ消息一样聊天：自然、直接、口语化。不需要描述自己的动作或心理，直接说话就行。2-4句话。"})
 
     # 调 LLM
     reply = call_llm(messages)
@@ -921,15 +938,28 @@ def _handle_message(user_id: str, nickname: str, raw_message: str, group_id: str
     # 清洗回复（去掉可能残留的 [语音] 标记）
     clean_reply = reply.replace("[语音]", "", 1).strip()
 
-    # ── 提取表情包标签 ──
+    # ── 暴力去括号：AI不听话就代码动手 ──
+    clean_reply = re.sub(r'（[^）]*）', '', clean_reply).strip()
+
+    # ── 表情包：优先AI主动标 [贴纸:标签]，否则按情绪自动发 ──
     sticker_path = None
     sticker_match = re.search(r'\[贴纸:([^\]]+)\]', clean_reply)
     if sticker_match:
         tag = sticker_match.group(1).strip()
         sticker_path = get_random_sticker(tag)
         clean_reply = clean_reply.replace(sticker_match.group(0), '').strip()
-        if sticker_path:
-            print(f"  [贴纸] {tag} → {Path(sticker_path).name}", flush=True)
+    elif is_owner:
+        # AI没主动发贴纸 → 按当前情绪自动选一张
+        mood = load_mood().get("mood", "neutral")
+        mood_to_sticker = {
+            "happy": "开心", "clingy": "撒娇", "jealous": "生气",
+            "cold": "无语", "tsundere": "得意", "sleepy": "晚安",
+        }
+        auto_tag = mood_to_sticker.get(mood)
+        if auto_tag:
+            sticker_path = get_random_sticker(auto_tag)
+    if sticker_path:
+        print(f"  [贴纸] → {Path(sticker_path).name}", flush=True)
 
     # 发送
     target = group_id if is_group else user_id
@@ -1098,7 +1128,7 @@ def main():
     print("  「我是 AI，但我懂你」")
     print(f"  NapCat API: {NAPCAT_HTTP}")
     print("=" * 44)
-    print(f"  [调试] 伴侣模式={COMPANION_TYPE} | 自定义人格={'有' if CUSTOM_PROMPT_OWNER else '无'} | 私密文件={'有' if _web_cfg.get('PROMPT_OWNER_FILE') else '无'}", flush=True)
+    print(f"  [调试] 伴侣模式={COMPANION_TYPE} | 自定义人格={'有' if CUSTOM_PROMPT_OWNER else '无'} | 私密模式={'开启' if PRIVATE_MODE else '关闭'}", flush=True)
 
     # 启动网页配置面板
     start_webui(8080)
