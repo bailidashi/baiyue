@@ -58,32 +58,19 @@ MEMORY_DIR = Path(__file__).parent / "memory"
 MEMORY_DIR.mkdir(exist_ok=True)
 
 # ==================== 表情包系统 ====================
+# 用法：把图片拖进 stickers/害羞/ 等文件夹，bot 自动读取，无需配置JSON
 STICKER_DIR = Path(__file__).parent / "stickers"
-STICKER_CONFIG = STICKER_DIR / "stickers.json"
-
-# 有效标签（和 stickers.json 保持一致）
 STICKER_TAGS = ["打招呼", "开心", "害羞", "撒娇", "生气", "伤心", "晚安", "疑惑", "无语", "得意", "摸头", "吃瓜"]
 
-def load_sticker_map() -> dict:
-    """加载表情包映射：{标签: [文件名列表]}"""
-    if not STICKER_CONFIG.exists():
-        return {}
-    try:
-        return json.loads(STICKER_CONFIG.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
-
 def get_random_sticker(tag: str) -> str | None:
-    """根据标签随机选一张表情包，返回文件路径"""
-    sticker_map = load_sticker_map()
-    files = sticker_map.get(tag, [])
+    """根据标签，从对应文件夹随机选一张表情包"""
+    tag_dir = STICKER_DIR / tag
+    if not tag_dir.is_dir():
+        return None
+    files = [f for f in tag_dir.iterdir() if f.suffix.lower() in ('.png','.jpg','.jpeg','.gif','.webp','.bmp')]
     if not files:
         return None
-    chosen = random.choice(files)
-    file_path = STICKER_DIR / chosen
-    if file_path.exists():
-        return str(file_path)
-    return None
+    return str(random.choice(files))
 
 OWNER_QQ = ""   # 主人的 QQ 号——只有他是男朋友模式
 OWNER_NAME = "百裏"        # 主人的称呼（出现在机器人对别人的回复里）
