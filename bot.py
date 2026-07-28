@@ -57,6 +57,34 @@ VOICE_ENABLED = True
 MEMORY_DIR = Path(__file__).parent / "memory"
 MEMORY_DIR.mkdir(exist_ok=True)
 
+# ==================== 表情包系统 ====================
+STICKER_DIR = Path(__file__).parent / "stickers"
+STICKER_CONFIG = STICKER_DIR / "stickers.json"
+
+# 有效标签（和 stickers.json 保持一致）
+STICKER_TAGS = ["打招呼", "开心", "害羞", "撒娇", "生气", "伤心", "晚安", "疑惑", "无语", "得意", "摸头", "吃瓜"]
+
+def load_sticker_map() -> dict:
+    """加载表情包映射：{标签: [文件名列表]}"""
+    if not STICKER_CONFIG.exists():
+        return {}
+    try:
+        return json.loads(STICKER_CONFIG.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+def get_random_sticker(tag: str) -> str | None:
+    """根据标签随机选一张表情包，返回文件路径"""
+    sticker_map = load_sticker_map()
+    files = sticker_map.get(tag, [])
+    if not files:
+        return None
+    chosen = random.choice(files)
+    file_path = STICKER_DIR / chosen
+    if file_path.exists():
+        return str(file_path)
+    return None
+
 OWNER_QQ = ""   # 主人的 QQ 号——只有他是男朋友模式
 OWNER_NAME = "百裏"        # 主人的称呼（出现在机器人对别人的回复里）
 BOT_NAME = "百约"          # 机器人的名字（提示词、触发词、日志都会用）
@@ -228,14 +256,15 @@ MOOD_TRIGGERS = {
 }
 
 # 情绪对应的行为描述（注入到系统提示词）
+# 注意：禁止用括号描述动作和心理，通过语气和用词来表达情绪
 MOOD_PROMPTS = {
-    "happy":    "情绪：你现在心情很好，说话带着笑意，更甜更主动，会用 [亲亲] [爱心] 表情。",
+    "happy":    "情绪：你现在心情很好，说话带着笑意，更甜更主动。禁止写（笑）之类的括号描述，直接用开心的语气说话。",
     "neutral":  "情绪：心情平静，如常。",
-    "cold":     "情绪：你心情不好，不想说话。回复变冷、变短，最多一两句。如果他哄你，可以慢慢软化——但别太快原谅。",
-    "jealous":  "情绪：你在吃醋，话里带酸味。不会直接发火，但语气明显不对。比如「哦」「没怎么」「你去问她呀」。他只要认真解释两句你就心软。",
-    "tsundere": "情绪：你在傲娇——明明开心但嘴上不承认。说反话、嘴硬心软，比如「谁想你了」「少自作多情」但其实心里很开心。",
-    "clingy":   "情绪：你现在特别粘人、脆弱，想被宠着哄着。说话软软的、带 [可怜] [害羞]，主动撒娇求抱抱。",
-    "sleepy":   "情绪：你困了，说话懒洋洋的，用词简单、带省略号……反应慢半拍，会催他去睡觉。",
+    "cold":     "情绪：你心情不好，不想说话。回复变冷、变短，最多一两句。不要写（叹气）（翻白眼）之类的括号动作。",
+    "jealous":  "情绪：你在吃醋，话里带酸味。不会直接发火，但语气明显不对。比如「哦」「没怎么」「你去问她呀」。不要用括号描述心理，用阴阳怪气的语气表达。",
+    "tsundere": "情绪：你在傲娇——明明开心但嘴上不承认。说反话、嘴硬心软，比如「谁想你了」「少自作多情」。不要写（脸红）（扭头）之类的，用嘴硬的语气就行。",
+    "clingy":   "情绪：你现在特别粘人、脆弱，想被宠着哄着。说话软软的，主动撒娇求抱抱。不要用（扯衣角）（抱紧）之类的括号动作。",
+    "sleepy":   "情绪：你困了，说话懒洋洋的，用词简单、带省略号……反应慢半拍。不要写（打哈欠）（揉眼睛）之类的括号描述。",
 }
 
 # 情绪自然衰减时间（秒）：超过这个时间没互动，回到 neutral
@@ -885,7 +914,8 @@ def _handle_message(user_id: str, nickname: str, raw_message: str, group_id: str
         print(f"  [语音] 检测到语音触发词", flush=True)
 
     # 要求AI说2-4句话，代码会自动按句子拆成2条消息发送
-    messages.append({"role": "system", "content": "[系统指令] 请回复2-4句话，不能只回一句。先用一句话回应对方，再用一句话开启新话题或提问。自然一些，像真人聊天。"})
+    sticker_hint = f"你可以发表情包，可选标签：{'/'.join(STICKER_TAGS)}。想发时写 [贴纸:标签]，比如 [贴纸:害羞]。每轮最多一张，放在回复开头。"
+    messages.append({"role": "system", "content": f"[系统指令] 1. 禁止用括号描述动作或心理。2. 回复2-4句话，像真人发QQ消息一样自然。3. {sticker_hint}"})
 
     # 调 LLM
     reply = call_llm(messages)
@@ -904,9 +934,25 @@ def _handle_message(user_id: str, nickname: str, raw_message: str, group_id: str
     # 清洗回复（去掉可能残留的 [语音] 标记）
     clean_reply = reply.replace("[语音]", "", 1).strip()
 
+    # ── 提取表情包标签 ──
+    sticker_path = None
+    sticker_match = re.search(r'\[贴纸:([^\]]+)\]', clean_reply)
+    if sticker_match:
+        tag = sticker_match.group(1).strip()
+        sticker_path = get_random_sticker(tag)
+        clean_reply = clean_reply.replace(sticker_match.group(0), '').strip()
+        if sticker_path:
+            print(f"  [贴纸] {tag} → {Path(sticker_path).name}", flush=True)
+
     # 发送
     target = group_id if is_group else user_id
     msg_type = "group" if is_group else "private"
+
+    # 先发贴纸（如果有）
+    if sticker_path:
+        file_url = f"file:///{sticker_path.replace(chr(92), '/')}"
+        send_qq_message(target, f"[CQ:image,file={file_url}]", msg_type)
+        time.sleep(0.4)  # 图片和文字之间稍微停顿
 
     if force_voice:
         # 语音模式：合成一条发语音

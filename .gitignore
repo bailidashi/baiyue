@@ -20,5 +20,12 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
+# 表情包图片（只追踪 stickers.json，图片太大不推 git）
+stickers/*.png
+stickers/*.jpg
+stickers/*.jpeg
+stickers/*.gif
+stickers/*.webp
+
 # 临时文件
 *.mp3
