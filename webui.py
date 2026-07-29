@@ -15,6 +15,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 ROOT = Path(__file__).parent
 CONFIG_FILE = ROOT / "config.json"
 LOGO_FILE = ROOT / "baiyue-icon.jpg"  # 网页头衔图标
+MASCOT_FILE = ROOT / "baiyue-mascot.jpg"  # 百约形象大图
 MEMORY_DIR = ROOT / "memory"
 NAPCAT_HTTP = "http://127.0.0.1:3000"  # 用于状态检测
 
@@ -543,777 +544,879 @@ BUILTIN_PERSONALITIES = [
     },
 ]
 
+SPONSORS = [
+    {"name":"朱大师", "tokens":"20000万", "icon":"👑", "color":"#f5a623"},
+    {"name":"游手好闲鑫大人", "tokens":"10000万", "icon":"💎", "color":"#a78bfa"},
+    {"name":"懋懋", "tokens":"2000万", "icon":"🌟", "color":"#f472b6"},
+    {"name":"义父", "tokens":"1000万", "icon":"🎖", "color":"#60a5fa"},
+    {"name":"豆豆", "tokens":"1000万", "icon":"💝", "color":"#34d399", "note":"🐕 贡献了「豆豆·AI男友」人格模型"},
+    {"name":"葵", "tokens":"1000万", "icon":"🌻", "color":"#fb923c", "note":"☀️ 贡献了「阳·AI男友」人格模型"},
+    {"name":"易落", "tokens":"1000万", "icon":"🍀", "color":"#a3e635"},
+]
+
 HTML_PAGE = r"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>百约 · BaiYue</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%2343b883'/><circle cx='16' cy='10' r='4' fill='white'/><path d='M10 24c0-4 2.7-6 6-6s6 2 6 6' fill='none' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%23d4a352'/><circle cx='16' cy='10' r='4' fill='white'/><path d='M10 24c0-4 2.7-6 6-6s6 2 6 6' fill='none' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
 <style>
 :root {
-  --bg: #f7faf8;
-  --sidebar-bg: #ffffff;
-  --card-bg: #ffffff;
-  --border: #e2ebe5;
-  --text: #2d3a32;
-  --text2: #6e8b78;
-  --text3: #9db8a7;
-  --accent: #43b883;
-  --accent-hover: #359a6b;
-  --accent-light: #eefbf3;
-  --accent-border: #b9ecd0;
-  --green: #43b883;
-  --red: #e85d5d;
-  --shadow: 0 1px 3px rgba(20,60,40,0.06), 0 1px 2px rgba(20,60,40,0.04);
-  --shadow-lg: 0 4px 16px rgba(20,60,40,0.08);
-  --radius: 12px;
-  --radius-sm: 8px;
-  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif;
-  --mono: "SF Mono", "Cascadia Code", "Consolas", monospace;
-  --sidebar-w: 200px;
+  --bg: #0f1419;
+  --surface: rgba(30,38,48,0.7);
+  --border: rgba(255,255,255,0.06);
+  --border-light: rgba(255,255,255,0.1);
+  --gold: #d4a352;
+  --gold-dim: #b8893a;
+  --gold-glow: rgba(212,163,82,0.15);
+  --green: #6aab87;
+  --text: #e6e0d6;
+  --text2: #9d9588;
+  --text3: #6b6560;
+  --red: #c06655;
+  --radius-sm: 9px;
+  --radius: 16px;
+  --font: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", -apple-system, sans-serif;
 }
+
 * { margin:0; padding:0; box-sizing:border-box; }
-html { font-size:16px; }
+html { font-size:15px; }
 body {
-  font-family:var(--font);
-  background:var(--bg);
-  color:var(--text);
-  min-height:100vh;
-  line-height:1.6;
-  -webkit-font-smoothing:antialiased;
-  display:flex;
+  font-family:var(--font); background:var(--bg); color:var(--text);
+  min-height:100vh; line-height:1.6; overflow-x:hidden;
 }
 
-/* ── Sidebar ── */
-.sidebar {
-  width:var(--sidebar-w);
-  background:var(--sidebar-bg);
-  border-right:1px solid var(--border);
-  padding:32px 0;
-  display:flex; flex-direction:column;
-  position:fixed; top:0; left:0; bottom:0;
-  z-index:10;
-}
-.sidebar-logo {
-  padding:0 20px 24px;
-  font-size:1.15rem; font-weight:700; color:var(--accent);
-  display:flex; align-items:center; gap:8px;
-  letter-spacing:-0.02em;
-}
-.sidebar-logo svg { width:26px; height:26px; }
-.sidebar-nav { flex:1; padding:0 12px; }
-.nav-item {
-  display:flex; align-items:center; gap:10px;
-  padding:10px 12px; margin-bottom:4px;
-  border-radius:var(--radius-sm);
-  cursor:pointer; font-size:0.9rem; font-weight:500;
-  color:var(--text2); transition:all .2s ease;
-  user-select:none;
-}
-.nav-item:hover { background:var(--accent-light); color:var(--accent); }
-.nav-item.active { background:var(--accent-light); color:var(--accent); font-weight:600; }
-.nav-icon { font-size:1.05rem; width:22px; text-align:center; flex-shrink:0; }
-.nav-badge {
-  margin-left:auto; font-size:0.7rem; padding:2px 8px; border-radius:99px;
-  background:var(--accent); color:#fff; font-weight:600;
-}
-.sidebar-footer {
-  padding:16px 20px 0; border-top:1px solid var(--border);
-  font-size:0.75rem; color:var(--text3);
-}
+/* ====== 星空画布 ====== */
+#starfield { position:fixed; top:0; left:0; width:100%; height:100%; z-index:0; pointer-events:none; }
+.app-layer { position:relative; z-index:1; }
 
-/* ── Main ── */
-.main {
-  margin-left:var(--sidebar-w);
-  flex:1; min-width:0;
-  padding:40px 48px 64px;
-  max-width:calc(100% - var(--sidebar-w));
+/* ====== 顶栏 ====== */
+.topbar {
+  position:sticky; top:0; z-index:100;
+  background:rgba(15,20,25,0.75); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+  border-bottom:1px solid rgba(255,255,255,0.05);
+  padding:0 28px; height:56px;
+  display:flex; align-items:center; justify-content:space-between;
 }
-.page-title {
-  font-size:1.4rem; font-weight:700; color:var(--text);
-  margin-bottom:4px;
+.topbar-left { display:flex; align-items:center; gap:10px; }
+.topbar-logo { width:30px; height:30px; border-radius:50%; object-fit:cover; box-shadow:0 0 12px rgba(255,255,255,0.1); }
+.topbar-name { font-weight:700; font-size:0.95rem; color:var(--text); letter-spacing:0.5px; }
+.topbar-nav { display:flex; gap:2px; }
+.topbar-nav a {
+  padding:6px 15px; border-radius:99px; font-size:0.8rem; color:var(--text2);
+  text-decoration:none; transition:all 0.2s; font-weight:500; cursor:pointer;
 }
-.page-desc {
-  font-size:0.85rem; color:var(--text3); margin-bottom:32px;
-}
+.topbar-nav a:hover { color:var(--text); background:rgba(255,255,255,0.04); }
+.topbar-nav a.active { background:rgba(255,255,255,0.08); color:var(--gold); font-weight:600; }
+.topbar-right { display:flex; align-items:center; gap:10px; }
+.status-dot { width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+.status-text { font-size:0.72rem; color:var(--text3); }
 
-/* ── Panels ── */
-.panel { display:none; animation:fadeSlideIn .25s ease; }
+/* ====== 主容器 ====== */
+.container { max-width:860px; margin:0 auto; padding:28px 20px 60px; }
+.panel { display:none; animation:fadeSlide 0.4s cubic-bezier(0.16,1,0.3,1); }
 .panel.active { display:block; }
-@keyframes fadeSlideIn {
-  from { opacity:0; transform:translateY(6px); }
-  to   { opacity:1; transform:translateY(0); }
-}
+@keyframes fadeSlide { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
 
-/* ── Cards ── */
-.card {
-  background:var(--card-bg);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  padding:24px;
-  margin-bottom:16px;
-  box-shadow:var(--shadow);
+/* ====== 首页 ====== */
+.home-hero {
+  display:flex; align-items:center; gap:44px;
+  padding:44px 0 36px; position:relative;
 }
-.card-header {
-  font-size:0.8rem; font-weight:600; color:var(--text2);
-  letter-spacing:0.04em;
-  margin-bottom:18px; display:flex; align-items:center; gap:8px;
+.home-hero-text { flex:1; }
+.home-hero-badge {
+  display:inline-block; padding:3px 12px; border-radius:99px;
+  background:rgba(212,163,82,0.1); border:1px solid rgba(212,163,82,0.2);
+  color:var(--gold); font-size:0.68rem; font-weight:600; letter-spacing:1.5px; margin-bottom:14px;
 }
-.card-header .dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
-.card-header .dot.green { background:var(--accent); }
+.home-hero h1 { font-size:2.5rem; font-weight:800; line-height:1.15; letter-spacing:-0.5px; margin-bottom:10px; color:#fff; }
+.home-hero h1 em { font-style:normal; color:var(--gold); }
+.home-hero p { font-size:0.92rem; color:var(--text2); max-width:360px; line-height:1.7; }
+.home-hero-img-wrap { position:relative; flex-shrink:0; }
+.home-hero-img {
+  width:180px; height:180px; border-radius:50%; object-fit:cover;
+  position:relative; z-index:1;
+  box-shadow:0 0 0 1px rgba(255,255,255,0.08), 0 0 60px rgba(212,163,82,0.15);
+  animation:float 5s ease-in-out infinite;
+}
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+.home-hero-img-wrap::before {
+  content:''; position:absolute; inset:-14px; border-radius:50%;
+  border:1.5px solid rgba(255,255,255,0.05);
+  animation:spin 22s linear infinite;
+}
+@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
 
-/* ── Form ── */
-.field { margin-bottom:18px; }
-.field:last-child { margin-bottom:0; }
-.field label {
-  display:block; font-size:0.82rem; font-weight:500;
-  color:var(--text2); margin-bottom:6px;
+/* Bento */
+.bento { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:24px; }
+.bento-card {
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  padding:20px; transition:all 0.35s cubic-bezier(0.16,1,0.3,1);
+  cursor:default; position:relative; overflow:hidden;
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  animation:appear 0.5s ease both;
 }
-.field input, .field textarea {
-  width:100%; padding:10px 14px;
-  background:var(--bg);
-  border:1px solid var(--border);
-  border-radius:var(--radius-sm);
-  color:var(--text);
-  font-size:0.88rem; font-family:var(--mono);
-  transition:border-color .2s ease, box-shadow .2s ease;
-  outline:none;
-}
-.field textarea {
-  resize:vertical; min-height:180px;
-  font-family:var(--font);
-  line-height:1.65; font-size:0.82rem;
-}
-.field input:focus, .field textarea:focus {
-  border-color:var(--accent);
-  box-shadow:0 0 0 3px rgba(255,107,138,0.12);
-}
-.field input::placeholder, .field textarea::placeholder { color:var(--text3); }
-.field .hint { font-size:0.75rem; color:var(--text3); margin-top:4px; }
-.field .hint code { background:var(--accent-light); padding:1px 5px; border-radius:3px; font-size:0.72rem; }
-.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.bento-card:hover { border-color:var(--border-light); transform:translateY(-3px); box-shadow:0 8px 28px rgba(0,0,0,0.4), 0 0 0 1px rgba(212,163,82,0.08); }
+.bento-card.wide { grid-column:span 2; display:flex; align-items:center; gap:16px; }
+.bento-card .bento-icon { font-size:1.6rem; margin-bottom:8px; display:block; }
+.bento-card h3 { font-size:0.86rem; font-weight:650; margin-bottom:3px; color:var(--text); }
+.bento-card p { font-size:0.73rem; color:var(--text3); line-height:1.5; }
+.bento-card:nth-child(1){animation-delay:0s} .bento-card:nth-child(2){animation-delay:0.06s}
+.bento-card:nth-child(3){animation-delay:0.12s} .bento-card:nth-child(4){animation-delay:0.18s}
+.bento-card:nth-child(5){animation-delay:0.24s} .bento-card:nth-child(6){animation-delay:0.30s}
+@keyframes appear { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
 
-/* ── Buttons ── */
+.bento-feat {
+  background:linear-gradient(135deg, rgba(212,163,82,0.08), rgba(106,171,135,0.05));
+  border:1px solid rgba(255,255,255,0.05); border-radius:var(--radius);
+  padding:18px; text-align:center; backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+}
+.bento-feat .num { font-size:1.8rem; font-weight:800; background:linear-gradient(135deg, var(--gold), #e8c97a); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+.bento-feat .lbl { font-size:0.7rem; color:var(--text3); margin-top:2px; }
+
+.start-strip {
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  padding:14px 20px; display:flex; align-items:center; gap:14px;
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+}
+.start-strip .step { display:flex; align-items:center; gap:7px; font-size:0.78rem; color:var(--text2); }
+.start-strip .step-num {
+  width:20px; height:20px; border-radius:50%; background:rgba(255,255,255,0.05); color:var(--text3);
+  display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.68rem; flex-shrink:0;
+}
+.start-strip code { background:rgba(255,255,255,0.05); padding:2px 7px; border-radius:4px; font-size:0.72rem; color:var(--gold); }
+
+/* ====== 通用组件 ====== */
+.section-title { font-size:1.05rem; font-weight:700; margin-bottom:14px; display:flex; align-items:center; gap:8px; color:var(--text); }
+.setup-card {
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  padding:20px; margin-bottom:12px;
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+}
+.setup-card h3 { font-size:0.84rem; font-weight:600; margin-bottom:14px; display:flex; align-items:center; gap:8px; color:var(--text); }
+.setup-card h3 .dot { width:6px; height:6px; border-radius:50%; background:var(--gold); flex-shrink:0; }
+
+.form-group { margin-bottom:12px; }
+.form-group:last-child { margin-bottom:0; }
+.form-group label { display:block; font-size:0.75rem; font-weight:600; margin-bottom:3px; color:var(--text2); }
+.form-group input, .form-group select, .form-group textarea {
+  width:100%; padding:9px 12px; border:1.5px solid var(--border); border-radius:var(--radius-sm);
+  font-size:0.82rem; font-family:var(--font); background:rgba(20,24,28,0.6); color:var(--text);
+  transition:all 0.2s;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  outline:none; border-color:var(--gold-dim); box-shadow:0 0 0 3px var(--gold-glow);
+}
+.form-group .helper { font-size:0.68rem; color:var(--text3); margin-top:2px; }
+.form-group .helper code { background:rgba(255,255,255,0.04); padding:1px 4px; border-radius:3px; }
+.row { display:flex; gap:12px; }
+.row > * { flex:1; }
+
 .btn {
-  display:inline-flex; align-items:center; gap:6px;
-  padding:10px 22px; border:none; border-radius:var(--radius-sm);
-  font-size:0.88rem; font-weight:600; font-family:var(--font);
-  cursor:pointer; transition:all .2s ease;
+  padding:9px 18px; border-radius:99px; border:none; cursor:pointer;
+  font-size:0.8rem; font-weight:600; transition:all 0.2s;
+  display:inline-flex; align-items:center; gap:5px; font-family:var(--font);
 }
-.btn-primary { background:var(--accent); color:#fff; }
-.btn-primary:hover { background:var(--accent-hover); box-shadow:var(--shadow-lg); }
-.btn-secondary {
-  background:transparent; color:var(--text2);
-  border:1px solid var(--border);
-}
-.btn-secondary:hover { background:var(--bg); color:var(--text); }
-.btn-sm { padding:6px 14px; font-size:0.78rem; }
-.btn-row { display:flex; gap:10px; margin-top:8px; align-items:center; }
+.btn-primary { background:var(--gold); color:#1a1814; }
+.btn-primary:hover { background:#e0b85e; box-shadow:0 4px 16px rgba(212,163,82,0.3); }
+.btn-ghost { background:transparent; color:var(--text2); }
+.btn-ghost:hover { background:rgba(255,255,255,0.03); color:var(--text); }
+.btn-outline { background:transparent; color:var(--text2); border:1.5px solid var(--border); }
+.btn-outline:hover { border-color:var(--border-light); color:var(--text); }
+.btn-danger { color:var(--red); border-color:rgba(192,102,85,0.3); }
+.btn-danger:hover { background:rgba(192,102,85,0.06); }
+.btn-sm { padding:5px 11px; font-size:0.7rem; }
+.btn-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:4px; }
 
-/* ── Voice List ── */
-.voice-list { display:flex; flex-direction:column; gap:8px; }
-.voice-card {
-  display:flex; align-items:center; gap:14px;
-  padding:14px 16px;
-  background:var(--bg);
-  border:1.5px solid transparent;
-  border-radius:var(--radius);
-  cursor:pointer; transition:all .2s ease;
-}
-.voice-card:hover { border-color:var(--accent-border); background:var(--accent-light); }
-.voice-card.selected {
-  border-color:var(--accent);
-  background:var(--accent-light);
-}
-.voice-card.selected::after {
-  content:'✓';
-  font-size:0.75rem; color:var(--accent); font-weight:700;
-  flex-shrink:0;
-}
-.voice-avatar {
-  width:40px; height:40px; border-radius:50%;
-  display:flex; align-items:center; justify-content:center;
-  font-size:0.85rem; font-weight:700; flex-shrink:0;
-}
-.voice-avatar.female { background:var(--accent-light); color:var(--accent); }
-.voice-avatar.male { background:#e8f0fe; color:#5b8def; }
-.voice-info { flex:1; min-width:0; }
-.voice-name { font-size:0.9rem; font-weight:600; color:var(--text); }
-.voice-tags { display:flex; gap:6px; margin-top:3px; }
-.voice-tags span {
-  font-size:0.7rem; padding:2px 8px; border-radius:99px;
-  background:#fff; color:var(--text3); border:1px solid var(--border);
-}
-.voice-card.selected .voice-tags span { background:#fff; color:var(--accent); border-color:var(--accent-border); }
-.preview-dot {
-  width:34px; height:34px; border-radius:50%;
-  border:1.5px solid var(--border);
-  background:#fff; cursor:pointer;
-  display:flex; align-items:center; justify-content:center;
-  transition:all .2s ease; flex-shrink:0;
-  color:var(--text3); font-size:0.65rem;
-}
-.preview-dot:hover { border-color:var(--accent); color:var(--accent); }
-.preview-dot.loading { border-color:var(--accent); color:var(--accent); animation:pulse .8s ease infinite; }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-
-/* ── Toggle ── */
-.toggle-row { display:flex; align-items:center; justify-content:space-between; padding:4px 0; }
-.toggle-label { font-size:0.9rem; font-weight:500; }
-.toggle-hint { font-size:0.78rem; color:var(--text3); margin-top:2px; }
 .toggle-switch {
-  width:48px; height:28px; border-radius:99px;
-  background:var(--border); cursor:pointer;
-  position:relative; transition:background .25s ease;
-  flex-shrink:0;
+  width:42px; height:23px; border-radius:99px; background:#3a3d42; cursor:pointer;
+  position:relative; transition:background 0.25s; flex-shrink:0;
 }
-.toggle-switch.on { background:var(--accent); }
+.toggle-switch.on { background:var(--gold); }
 .toggle-switch::after {
-  content:''; position:absolute; top:4px; left:4px;
-  width:20px; height:20px; border-radius:50%;
-  background:#fff; transition:transform .25s ease;
-  box-shadow:0 1px 3px rgba(0,0,0,0.15);
+  content:''; position:absolute; top:3px; left:3px;
+  width:17px; height:17px; border-radius:50%; background:#fff;
+  transition:left 0.25s; box-shadow:0 1px 3px rgba(0,0,0,0.2);
 }
-.toggle-switch.on::after { transform:translateX(20px); }
+.toggle-switch.on::after { left:22px; }
+.toggle-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.toggle-label { font-weight:600; font-size:0.84rem; }
+.toggle-hint { font-size:0.7rem; color:var(--text3); margin-top:2px; }
 
-/* ── Preview ── */
-.preview-row { display:flex; gap:10px; }
-.preview-row input { flex:1; }
+/* ====== 人格 ====== */
+.persona-layout { display:flex; gap:16px; }
+.persona-sidebar { width:185px; flex-shrink:0; }
+.persona-card {
+  padding:11px 13px; border-radius:var(--radius-sm); cursor:pointer;
+  transition:all 0.15s; font-size:0.8rem; margin-bottom:3px;
+  display:flex; align-items:center; gap:7px; border:1.5px solid transparent;
+  color:var(--text2);
+}
+.persona-card:hover { background:rgba(255,255,255,0.03); color:var(--text); }
+.persona-card.active { border-color:rgba(212,163,82,0.25); background:rgba(212,163,82,0.06); color:var(--gold); font-weight:600; }
+.persona-icon { font-size:1.1rem; }
+.persona-main { flex:1; }
 
-/* ── Toast ── */
-.toast-container { position:fixed; top:20px; right:20px; z-index:999; display:flex; flex-direction:column; gap:8px; }
+.private-toggle {
+  border:1.5px dashed rgba(212,163,82,0.2); border-radius:var(--radius);
+  padding:14px 18px; margin-top:16px; background:var(--surface);
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+}
+.private-toggle summary { font-weight:600; font-size:0.82rem; cursor:pointer; list-style:none; display:flex; align-items:center; gap:6px; color:var(--text2); }
+.private-toggle summary::-webkit-details-marker { display:none; }
+.private-body { padding-top:14px; margin-top:14px; border-top:1px solid var(--border); }
+
+/* ====== 语音 ====== */
+.voice-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; }
+.voice-chip {
+  padding:12px 8px; border-radius:var(--radius-sm); border:1.5px solid var(--border);
+  text-align:center; cursor:pointer; transition:all 0.2s; background:var(--surface);
+  backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+}
+.voice-chip:hover { border-color:var(--border-light); transform:translateY(-2px); }
+.voice-chip.selected { border-color:var(--gold-dim); background:rgba(212,163,82,0.06); }
+.voice-chip .vc-icon { font-size:1.3rem; margin-bottom:3px; }
+.voice-chip .vc-name { font-weight:600; font-size:0.76rem; color:var(--text); }
+.voice-chip .vc-tag { font-size:0.63rem; color:var(--text3); }
+
+/* ====== 记忆 ====== */
+.mem-layout { display:flex; gap:16px; }
+.mem-sidebar { width:170px; flex-shrink:0; }
+.mem-user {
+  padding:9px 11px; border-radius:var(--radius-sm); cursor:pointer;
+  display:flex; justify-content:space-between; align-items:center;
+  font-size:0.8rem; color:var(--text2); transition:all 0.15s;
+}
+.mem-user:hover { background:rgba(255,255,255,0.03); }
+.mem-user.active { background:rgba(255,255,255,0.04); color:var(--text); font-weight:600; }
+.mem-badge { font-size:0.65rem; color:var(--text3); }
+.mem-main { flex:1; }
+.msg-bubble { padding:9px 0; border-bottom:1px solid rgba(255,255,255,0.03); font-size:0.8rem; }
+.msg-bubble .who { font-size:0.66rem; font-weight:650; color:var(--gold); margin-bottom:2px; }
+.msg-bubble .what { color:var(--text2); line-height:1.5; }
+
+/* ====== 赞助 ====== */
+.sponsor-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:14px; margin-bottom:20px; }
+.sponsor-card {
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  padding:20px; position:relative; overflow:hidden;
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  transition:all 0.3s cubic-bezier(0.16,1,0.3,1);
+}
+.sponsor-card:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(0,0,0,0.4); border-color:var(--border-light); }
+.sponsor-card .sc-glow { position:absolute; top:-24px; right:-24px; width:80px; height:80px; border-radius:50%; opacity:0.1; pointer-events:none; }
+.sponsor-card .sc-top { display:flex; align-items:center; gap:10px; margin-bottom:10px; position:relative; z-index:1; }
+.sponsor-card .sc-avatar { width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.2rem; flex-shrink:0; }
+.sponsor-card .sc-name { font-size:0.9rem; font-weight:700; color:var(--text); }
+.sponsor-card .sc-role { font-size:0.68rem; color:var(--text3); }
+.sponsor-card .sc-tokens { display:flex; align-items:baseline; gap:4px; position:relative; z-index:1; }
+.sponsor-card .sc-amount { font-size:1.4rem; font-weight:800; }
+.sponsor-card .sc-unit { font-size:0.72rem; color:var(--text3); }
+.sponsor-card .sc-note { margin-top:10px; padding-top:10px; border-top:1px solid var(--border); font-size:0.7rem; color:var(--text3); position:relative; z-index:1; }
+
+.qr-card {
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+  padding:28px 20px; text-align:center;
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+}
+
+/* Toast */
+.toast-container { position:fixed; bottom:28px; right:28px; z-index:999; display:flex; flex-direction:column; gap:8px; }
 .toast {
-  padding:12px 18px; border-radius:var(--radius-sm);
-  font-size:0.85rem; font-weight:500;
-  color:#fff;
-  animation:toastIn .35s ease;
-  max-width:340px;
-  box-shadow:var(--shadow-lg);
+  padding:10px 18px; border-radius:99px; font-size:0.78rem; font-weight:600;
+  color:#1a1814; background:var(--gold); box-shadow:0 4px 20px rgba(0,0,0,0.5);
+  animation:popIn 0.3s ease;
 }
-.toast.success { background:var(--green); }
-.toast.error { background:var(--red); }
-@keyframes toastIn {
-  from { opacity:0; transform:translateX(40px); }
-  to { opacity:1; transform:translateX(0); }
-}
-
-/* ── Preset Cards ── */
-.preset-card {
-  padding:14px 16px; border-radius:var(--radius);
-  border:1.5px solid var(--border);
-  cursor:pointer; transition:all .2s ease;
-  background:var(--bg);
-}
-.preset-card:hover { border-color:var(--accent-border); background:var(--accent-light); }
-.preset-card.selected { border-color:var(--accent); background:var(--accent-light); }
-.preset-card .preset-name { font-size:0.9rem; font-weight:600; color:var(--text); }
-.preset-card .preset-author { font-size:0.75rem; color:var(--accent); font-weight:500; margin-top:2px; }
-.preset-card .preset-desc { font-size:0.78rem; color:var(--text3); margin-top:4px; }
-.preset-card.selected::after {
-  content:'✓ 已选'; position:absolute; top:8px; right:12px;
-  font-size:0.7rem; color:var(--accent); font-weight:600;
-}
-.preset-card { position:relative; }
-
-/* ── Empty ── */
-.empty-state { text-align:center; padding:40px 20px; color:var(--text3); }
-.empty-state .icon { font-size:2.5rem; margin-bottom:12px; opacity:0.6; }
+.toast.error { background:var(--red); color:#fff; }
+@keyframes popIn { from{opacity:0;transform:scale(0.9)} to{opacity:1;transform:scale(1)} }
 
 @media (max-width:768px) {
-  .sidebar { width:60px; }
-  .sidebar-logo span, .nav-item span:not(.nav-icon), .nav-badge, .sidebar-footer { display:none; }
-  .sidebar-logo { padding:20px 12px; justify-content:center; }
-  .nav-item { justify-content:center; padding:12px; }
-  .main { margin-left:60px; padding:24px 20px; max-width:calc(100% - 60px); }
-  .grid-2 { grid-template-columns:1fr; }
+  .topbar { padding:0 12px; }
+  .topbar-nav a { padding:5px 9px; font-size:0.72rem; }
+  .container { padding:16px 12px 40px; }
+  .home-hero { flex-direction:column-reverse; text-align:center; gap:16px; padding:20px 0; }
+  .home-hero-img { width:130px; height:130px; }
+  .home-hero-img-wrap::before { display:none; }
+  .home-hero h1 { font-size:1.8rem; }
+  .home-hero p { max-width:100%; }
+  .bento { grid-template-columns:1fr 1fr; }
+  .bento-card.wide { grid-column:span 2; }
+  .persona-layout, .mem-layout { flex-direction:column; }
+  .persona-sidebar, .mem-sidebar { width:100%; display:flex; gap:4px; overflow-x:auto; }
+  .persona-card, .mem-user { flex-shrink:0; white-space:nowrap; }
+  .voice-grid { grid-template-columns:repeat(3,1fr); }
+  .row { flex-direction:column; }
+  .start-strip { flex-wrap:wrap; }
 }
 </style>
 </head>
 <body>
 
-<!-- Sidebar -->
-<nav class="sidebar">
-  <div class="sidebar-logo">
-    <img src="/baiyue-icon.jpg" alt="百约" style="width:28px;height:28px;border-radius:50%;object-fit:cover">
-    <span>百约</span>
+<canvas id="starfield"></canvas>
+<div class="app-layer">
+
+<header class="topbar">
+  <div class="topbar-left">
+    <img src="/baiyue-icon.jpg" class="topbar-logo" alt="">
+    <span class="topbar-name">百约</span>
   </div>
-  <div class="sidebar-nav">
-    <div class="nav-item active" data-tab="home">
-      <span class="nav-icon">🏠</span> <span>首页</span>
-    </div>
-    <div class="nav-item" data-tab="config">
-      <span class="nav-icon">⚙</span> <span>账号配置</span>
-    </div>
-    <div class="nav-item" data-tab="personality">
-      <span class="nav-icon">💬</span> <span>人格设定</span>
-    </div>
-    <div class="nav-item" data-tab="memory">
-      <span class="nav-icon">🧠</span> <span>记忆管理</span>
-    </div>
-    <div class="nav-item" data-tab="sponsors">
-      <span class="nav-icon">💝</span> <span>赞助名单</span>
-    </div>
-    <div class="nav-item" data-tab="voice">
-      <span class="nav-icon">🎙</span> <span>语音设置</span>
-    </div>
+  <nav class="topbar-nav">
+    <a class="active" data-tab="home">首页</a>
+    <a data-tab="config">配置</a>
+    <a data-tab="personality">人格</a>
+    <a data-tab="voice">语音</a>
+    <a data-tab="memory">记忆</a>
+    <a data-tab="sponsors">赞助</a>
+  </nav>
+  <div class="topbar-right">
+    <span class="status-dot"></span>
+    <span class="status-text" id="status-label">检测中</span>
   </div>
-  <div class="sidebar-footer" style="display:flex;flex-direction:column;gap:6px">
-    <span>v3.0 · 配置面板</span>
-    <span id="status-indicator" style="display:flex;align-items:center;gap:5px;font-size:0.72rem">
-      <span id="status-dot" style="width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0"></span>
-      <span id="status-text">检测中...</span>
-    </span>
-  </div>
-</nav>
+</header>
 
-<!-- Main Content -->
-<div class="main">
+<div class="container">
 
-  <!-- ════ HOME ════ -->
-  <div id="panel-home" class="panel active">
-    <div style="text-align:center;padding:40px 0 30px">
-      <img src="/baiyue-icon.jpg" alt="百约" style="width:72px;height:72px;border-radius:50%;object-fit:cover;box-shadow:0 4px 16px rgba(20,60,40,0.15)">
-      <div style="font-size:1.8rem;font-weight:700;margin-top:16px;color:var(--text)">百约 · BaiYue</div>
-      <div style="font-size:1rem;color:var(--text2);margin-top:6px">「 我是 AI，但我懂你 」</div>
-      <div id="home-status" style="margin-top:14px"></div>
-    </div>
-
-    <!-- 功能介绍 -->
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px">
-      <div class="card" style="text-align:center;padding:20px 14px;margin-bottom:0">
-        <div style="font-size:2rem;margin-bottom:8px">💬</div>
-        <div style="font-weight:600;color:var(--text);margin-bottom:4px">QQ 智能聊天</div>
-        <div style="font-size:0.78rem;color:var(--text2)">私聊群聊、@回复<br>像真人一样自然对话</div>
+  <!-- ═══════ 首页 ═══════ -->
+  <section id="panel-home" class="panel active">
+    <div class="home-hero">
+      <div class="home-hero-text">
+        <div class="home-hero-badge">AI COMPANION</div>
+        <h1>你好，我是<em>百约</em></h1>
+        <p>你的 QQ AI 拍档。能聊天、会语音、有记忆、懂情绪。在无数个深夜，陪你聊天的那个人。</p>
       </div>
-      <div class="card" style="text-align:center;padding:20px 14px;margin-bottom:0">
-        <div style="font-size:2rem;margin-bottom:8px">🎭</div>
-        <div style="font-weight:600;color:var(--text);margin-bottom:4px">多人格切换</div>
-        <div style="font-size:0.78rem;color:var(--text2)">内置6种人格卡片<br>支持自定义创建</div>
-      </div>
-      <div class="card" style="text-align:center;padding:20px 14px;margin-bottom:0">
-        <div style="font-size:2rem;margin-bottom:8px">🎤</div>
-        <div style="font-weight:600;color:var(--text);margin-bottom:4px">语音消息</div>
-        <div style="font-size:0.78rem;color:var(--text2)">15种微软免费音色<br>女声男声方言粤语</div>
-      </div>
-      <div class="card" style="text-align:center;padding:20px 14px;margin-bottom:0">
-        <div style="font-size:2rem;margin-bottom:8px">🧠</div>
-        <div style="font-weight:600;color:var(--text);margin-bottom:4px">长期记忆</div>
-        <div style="font-size:0.78rem;color:var(--text2)">记住聊天内容<br>自动压缩摘要</div>
-      </div>
-      <div class="card" style="text-align:center;padding:20px 14px;margin-bottom:0">
-        <div style="font-size:2rem;margin-bottom:8px">😊</div>
-        <div style="font-weight:600;color:var(--text);margin-bottom:4px">情绪感知</div>
-        <div style="font-size:0.78rem;color:var(--text2)">7种情绪自动切换<br>开心吃醋傲娇粘人</div>
-      </div>
-      <div class="card" style="text-align:center;padding:20px 14px;margin-bottom:0">
-        <div style="font-size:2rem;margin-bottom:8px">🤖</div>
-        <div style="font-weight:600;color:var(--text);margin-bottom:4px">多AI模型</div>
-        <div style="font-size:0.78rem;color:var(--text2)">8个AI提供商<br>一键切换不用改代码</div>
+      <div class="home-hero-img-wrap">
+        <img src="/baiyue-mascot.jpg" class="home-hero-img" alt="百约">
       </div>
     </div>
 
-    <!-- 快速开始 -->
-    <div class="card" style="margin-bottom:0">
-      <div class="card-header"><span class="dot green"></span> 快速开始</div>
-      <div style="display:flex;gap:20px;font-size:0.82rem;color:var(--text2);line-height:1.8">
-        <div style="flex:1">
-          <b style="color:var(--text)">1.</b> 打开 NapCatQQ 并登录<br>
-          <b style="color:var(--text)">2.</b> 在 NapCat WebUI 添加反向WS<br>
-          <span style="color:var(--accent)">ws://127.0.0.1:8001</span>
-        </div>
-        <div style="flex:1">
-          <b style="color:var(--text)">3.</b> 回到本页面 → 账号配置<br>
-          <b style="color:var(--text)">4.</b> 填入 API Key，保存<br>
-          <b style="color:var(--text)">5.</b> 运行 <code style="background:var(--accent-light);padding:2px 6px;border-radius:4px">python bot.py</code>
-        </div>
+    <div class="bento">
+      <div class="bento-card wide">
+        <span style="font-size:2.4rem">💬</span>
+        <div><h3>自然对话</h3><p>私聊、群聊、@回复。会吐槽、能撒娇、偶尔毒舌。不是客服，是你的拍档。</p></div>
       </div>
+      <div class="bento-feat"><div class="num">8</div><div class="lbl">AI 模型可选</div></div>
+      <div class="bento-card"><span class="bento-icon">🎭</span><h3>人格卡片</h3><p>6种预设 + 自定义，一键换性格</p></div>
+      <div class="bento-card"><span class="bento-icon">🧠</span><h3>长期记忆</h3><p>记住每一次对话，越聊越懂你</p></div>
+      <div class="bento-card"><span class="bento-icon">🎤</span><h3>语音消息</h3><p>15种音色，想听你的声音就发语音</p></div>
     </div>
-  </div>
 
-  <!-- ════ CONFIG ════ -->
-  <div id="panel-config" class="panel">
-    <div class="page-title">账号配置</div>
-    <div class="page-desc">设置 API Key 和 QQ 账号绑定</div>
+    <div class="start-strip">
+      <div class="step"><span class="step-num">1</span>打开 NapCatQQ</div>
+      <div class="step"><span class="step-num">2</span>添加反向WS <code>ws://127.0.0.1:8001</code></div>
+      <div class="step"><span class="step-num">3</span>填写 API Key</div>
+      <div class="step"><span class="step-num">4</span>运行 <code>python bot.py</code></div>
+    </div>
+  </section>
 
-    <div class="card">
-      <div class="card-header"><span class="dot green"></span> AI 模型</div>
-      <div class="field">
-        <label>模型提供商</label>
+  <!-- ═══════ 配置 ═══════ -->
+  <section id="panel-config" class="panel">
+    <div class="section-title">账号配置</div>
+    <div class="setup-card">
+      <h3><span class="dot"></span>AI 模型</h3>
+      <div class="form-group"><label>提供商</label>
         <select id="cfg-API_PROVIDER" onchange="onProviderChange()">
-          <option value="deepseek">DeepSeek</option>
-          <option value="openai">OpenAI</option>
-          <option value="siliconflow">硅基流动 (SiliconFlow)</option>
-          <option value="zhipu">智谱 (GLM)</option>
-          <option value="dashscope">通义千问 (DashScope)</option>
-          <option value="moonshot">月之暗面 (Moonshot)</option>
-          <option value="groq">Groq（免费）</option>
-          <option value="ollama">Ollama（本地）</option>
-          <option value="custom">自定义</option>
+          <option value="deepseek">DeepSeek</option><option value="openai">OpenAI</option>
+          <option value="siliconflow">硅基流动</option><option value="zhipu">智谱GLM</option>
+          <option value="dashscope">通义千问</option><option value="moonshot">月之暗面</option>
+          <option value="groq">Groq</option><option value="ollama">Ollama</option><option value="custom">自定义</option>
         </select>
-        <div class="hint">选择你用的 AI 服务，Base URL 和模型名会自动填充</div>
       </div>
-      <div class="field">
-        <label>Base URL</label>
-        <input type="text" id="cfg-API_BASE" placeholder="https://api.deepseek.com">
-        <div class="hint">API 地址，一般不用改</div>
+      <div class="row">
+        <div class="form-group"><label>Base URL</label><input id="cfg-API_BASE" placeholder="https://api.deepseek.com"></div>
+        <div class="form-group"><label>模型名</label><input id="cfg-API_MODEL" placeholder="deepseek-chat"></div>
       </div>
-      <div class="field">
-        <label>API Key</label>
-        <input type="password" id="cfg-API_KEY" placeholder="sk-...">
-        <div class="hint" id="hint-apikey">在对应平台注册获取，Ollama 可留空</div>
+      <div class="form-group"><label>API Key</label><input type="password" id="cfg-API_KEY" placeholder="sk-..."><span class="helper" id="hint-apikey">在对应平台注册获取</span></div>
+    </div>
+    <div class="setup-card">
+      <h3><span class="dot"></span>QQ 绑定</h3>
+      <div class="row">
+        <div class="form-group"><label>主人 QQ</label><input id="cfg-OWNER_QQ" placeholder="你的QQ号"></div>
+        <div class="form-group"><label>机器人 QQ</label><input id="cfg-BOT_QQ" placeholder="百约的QQ号"></div>
       </div>
-      <div class="field">
-        <label>模型名</label>
-        <input type="text" id="cfg-API_MODEL" placeholder="deepseek-chat">
-        <div class="hint">如 deepseek-chat / gpt-4o / qwen2.5:7b</div>
+      <div class="row">
+        <div class="form-group"><label>主人称呼</label><input id="cfg-OWNER_NAME" placeholder="百裏"></div>
+        <div class="form-group"><label>机器人名字</label><input id="cfg-BOT_NAME" placeholder="百约"></div>
       </div>
     </div>
-
-    <div class="card">
-      <div class="card-header"><span class="dot green"></span> QQ 账号绑定</div>
-      <div class="grid-2">
-        <div class="field">
-          <label>主人的 QQ 号</label>
-          <input id="cfg-OWNER_QQ" placeholder="你的QQ号">
-          <div class="hint">这个号会触发 AI 女友模式</div>
-        </div>
-        <div class="field">
-          <label>主人的称呼</label>
-          <input id="cfg-OWNER_NAME" placeholder="例如：百裏">
-          <div class="hint">出现在机器人对外人的回复里</div>
-        </div>
-        <div class="field">
-          <label>机器人名字</label>
-          <input id="cfg-BOT_NAME" placeholder="例如：百约">
-        </div>
-        <div class="field">
-          <label>机器人的 QQ 号</label>
-          <input id="cfg-BOT_QQ" placeholder="机器人登录的QQ号">
-          <div class="hint">用于识别群聊 @提及</div>
-        </div>
+    <div class="setup-card">
+      <h3><span class="dot"></span>伴侣模式</h3>
+      <div class="form-group">
+        <select id="cfg-COMPANION_TYPE"><option value="girlfriend">AI 女友</option><option value="boyfriend">AI 男友</option><option value="assistant">酷酷助手</option></select>
       </div>
     </div>
+    <div class="btn-row"><button class="btn btn-primary" onclick="saveConfig()">保存配置</button></div>
+  </section>
 
-    <div class="card">
-      <div class="card-header"><span class="dot green"></span> 伴侣模式</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px" id="companion-selector"></div>
-      <div class="hint" style="margin-top:8px">选择百约与主人的关系类型</div>
-    </div>
-
-    <div class="btn-row">
-      <button class="btn btn-primary" onclick="saveConfig()">保存配置</button>
-      <span style="font-size:0.82rem;color:var(--text3)">保存后重启 bot.py 生效</span>
-    </div>
-  </div>
-
-  <!-- ════ PERSONALITY ════ -->
-  <div id="panel-personality" class="panel">
-    <div class="page-title">人格设定</div>
-    <div class="page-desc">点击左侧卡片查看和编辑人格，也可以自己新建卡片</div>
-
-    <div style="display:flex;gap:20px;align-items:flex-start">
-      <!-- 左侧：卡片列表 -->
-      <div style="width:220px;flex-shrink:0">
-        <div id="card-list" style="display:flex;flex-direction:column;gap:8px"></div>
-        <button class="btn btn-secondary" onclick="newCard()" style="width:100%;margin-top:10px;justify-content:center">+ 新建人格</button>
-      </div>
-
-      <!-- 右侧：编辑器 -->
-      <div style="flex:1;min-width:0">
-        <div class="card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-            <div class="card-header" style="margin-bottom:0">
-              <span class="dot green"></span> <span id="editor-title">选择左侧卡片编辑</span>
-            </div>
-            <span id="active-badge" style="font-size:0.7rem;padding:4px 10px;border-radius:99px;background:var(--accent-light);color:var(--accent);font-weight:600;display:none">当前使用</span>
-          </div>
-          <div class="field">
-            <label>人格名称</label>
-            <input id="card-name" placeholder="给这个人格起个名字">
-          </div>
-          <div class="field">
-            <label>对主人的回复风格</label>
-            <textarea id="cfg-PROMPT_OWNER" rows="14"></textarea>
-            <div class="hint">变量：<code>{BOT_NAME}</code> <code>{owner_name}</code></div>
-          </div>
-          <div class="field">
-            <label>对陌生人的回复风格</label>
-            <textarea id="cfg-PROMPT_OTHER" rows="8"></textarea>
-            <div class="hint">变量：<code>{BOT_NAME}</code> <code>{OWNER_NAME}</code></div>
-          </div>
+  <!-- ═══════ 人格 ═══════ -->
+  <section id="panel-personality" class="panel">
+    <div class="section-title">人格设定</div>
+    <div class="persona-layout">
+      <div class="persona-sidebar" id="card-list"></div>
+      <div class="persona-main">
+        <div class="setup-card">
+          <h3><span class="dot"></span><span id="editor-title">编辑人格</span> <span id="active-badge" style="font-size:0.66rem;background:rgba(212,163,82,0.12);color:var(--gold);padding:3px 10px;border-radius:99px;margin-left:8px;font-weight:500;display:none">当前使用</span></h3>
+          <div class="form-group"><label>名称</label><input id="card-name" placeholder="人格名称"></div>
+          <div class="form-group"><label>对主人的风格</label><textarea id="card-prompt-owner" rows="10" style="resize:vertical"></textarea></div>
+          <div class="form-group"><label>对其他人的风格</label><textarea id="card-prompt-other" rows="4" style="resize:vertical"></textarea></div>
           <div class="btn-row">
-            <button class="btn btn-primary" onclick="saveCurrentCard()">💾 保存</button>
-            <button class="btn btn-primary" onclick="setActiveCard()" style="background:var(--accent);opacity:0.85">⭐ 设为当前使用</button>
-            <button class="btn btn-secondary" onclick="deleteCard()">🗑 删除</button>
+            <button class="btn btn-primary" onclick="saveCurrentCard()">保存</button>
+            <button class="btn btn-outline" onclick="setActiveCard()">设为当前</button>
+            <button class="btn btn-ghost btn-danger" onclick="deleteCard()">删除</button>
           </div>
         </div>
-      </div>
-
-      <!-- ── 私密模式（折叠区）── -->
-      <div class="card" style="margin-top:16px;border:1px dashed #e5e7eb">
-        <div class="card-header" onclick="togglePrivate()" style="cursor:pointer;user-select:none;display:flex;justify-content:space-between;align-items:center">
-          <span><span id="private-arrow" style="display:inline-block;transition:0.2s">▶</span> ⚠️ 私密模式</span>
-          <span id="private-status" style="font-size:0.75rem;color:#9ca3af"></span>
-        </div>
-        <div id="private-body" style="display:none;padding:16px;border-top:1px solid #f3f4f6">
-          <div style="background:#fef2f2;padding:12px;border-radius:8px;margin-bottom:12px;font-size:0.8rem;color:#991b1b">
-            ⚠️ 此功能包含成人/亲密内容，仅适合16岁以上用户。开启后私密文件会覆盖所有其他人格设定。
+        <details class="private-toggle">
+          <summary>⚠️ 私密模式</summary>
+          <div class="private-body">
+            <div style="background:rgba(212,163,82,0.06);padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:0.73rem;color:var(--gold-dim);border:1px solid rgba(212,163,82,0.1)">包含亲密内容，仅适合16岁以上。开启后覆盖所有人格设定。</div>
+            <div class="form-group"><label>启用</label><div class="toggle-switch" id="toggle-private" onclick="togglePrivateMode()"></div></div>
+            <div class="form-group"><label>私密文件</label><input id="cfg-PROMPT_OWNER_FILE" value="prompt_private.txt"><span class="helper">不会推送到 GitHub</span></div>
           </div>
-          <div class="field">
-            <label>启用私密模式</label>
-            <div class="toggle" id="toggle-private" onclick="togglePrivateMode()" style="width:44px;height:24px;border-radius:99px;background:#d1d5db;cursor:pointer;position:relative;transition:0.2s">
-              <div style="width:18px;height:18px;border-radius:50%;background:white;position:absolute;top:3px;left:3px;transition:0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2)"></div>
-            </div>
-            <input type="checkbox" id="cfg-PRIVATE_MODE" style="display:none">
-          </div>
-          <div class="field">
-            <label>私密人格文件</label>
-            <input type="text" id="cfg-PROMPT_OWNER_FILE" placeholder="prompt_private.txt">
-            <div class="hint">在项目目录下创建该文件，写入你想要的私密人格提示词。此文件不会上传到 GitHub。</div>
-          </div>
-        </div>
+        </details>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- ════ MEMORY ════ -->
-  <div id="panel-memory" class="panel">
-    <div class="page-title" style="display:flex;justify-content:space-between;align-items:center">
-      <span>记忆管理</span>
-      <span>
-        <button class="btn btn-secondary btn-sm" onclick="exportAllMemory('json')">📦 导出全部</button>
-      </span>
-    </div>
-    <div class="page-desc">查看百约和每个人的对话记录，管理长期记忆</div>
-
-    <!-- 统计卡片 -->
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px" id="mem-stats"></div>
-
-    <div style="display:flex;gap:20px;align-items:flex-start">
-      <!-- 左侧：用户列表 -->
-      <div style="width:220px;flex-shrink:0">
-        <div style="font-size:0.8rem;font-weight:600;color:var(--text2);letter-spacing:0.04em;margin-bottom:10px">
-          <span class="dot green" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:6px"></span> 对话用户
-        </div>
-        <div id="mem-user-list" style="display:flex;flex-direction:column;gap:6px;max-height:420px;overflow-y:auto">
-          <div class="empty-state"><div class="icon">📭</div>暂无对话记录</div>
-        </div>
-      </div>
-
-      <!-- 右侧：对话详情 -->
-      <div style="flex:1;min-width:0">
-        <div id="mem-detail-empty" class="card" style="text-align:center;padding:48px 24px">
-          <div style="font-size:2rem;margin-bottom:8px;opacity:0.5">👈</div>
-          <div style="color:var(--text3)">选择一个用户查看对话记录</div>
-        </div>
-        <div id="mem-detail" style="display:none">
-          <!-- 摘要卡片 -->
-          <div class="card" id="mem-summary-card" style="display:none">
-            <div class="card-header"><span class="dot green"></span> 长期记忆摘要</div>
-            <div id="mem-summary-text" style="font-size:0.85rem;color:var(--text2);line-height:1.7;white-space:pre-wrap"></div>
-          </div>
-          <!-- 对话列表 -->
-          <div class="card">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-              <div class="card-header" style="margin-bottom:0">
-                <span class="dot green"></span> <span id="mem-conv-title">对话记录</span>
-              </div>
-              <button class="btn btn-secondary btn-sm" onclick="exportMemory('json')">📥 导出JSON</button>
-              <button class="btn btn-secondary btn-sm" onclick="exportMemory('txt')">📄 导出文本</button>
-              <button class="btn btn-secondary btn-sm" onclick="clearCurrentMemory()" style="color:var(--red);border-color:var(--red)">🗑 清空记忆</button>
-            </div>
-            <div id="mem-conv-list" style="max-height:400px;overflow-y:auto"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ════ SPONSORS ════ -->
-  <div id="panel-sponsors" class="panel">
-    <div class="page-title">赞助名单</div>
-    <div class="page-desc">感谢每一位支持百约的捐助者，你们的 token 让百约变得更好</div>
-
-    <!-- 捐助者卡片 -->
-    <div id="sponsor-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-bottom:24px"></div>
-
-    <!-- QQ群 -->
-    <div class="card" style="text-align:center;padding:28px 24px">
-      <div style="font-size:1.2rem;font-weight:700;color:var(--text);margin-bottom:6px">📱 加入百约交流群</div>
-      <div style="font-size:0.85rem;color:var(--text2);margin-bottom:16px">
-        群号：<code style="font-size:0.9rem;font-weight:600;color:var(--accent)">227077265</code>
-      </div>
-      <img src="/qrcode.jpg" alt="群二维码" style="width:200px;height:200px;border-radius:12px;border:1px solid var(--border);object-fit:cover">
-      <div style="font-size:0.75rem;color:var(--text3);margin-top:8px">扫码加入，一起聊天一起写代码</div>
-    </div>
-  </div>
-
-  <!-- ════ VOICE ════ -->
-  <div id="panel-voice" class="panel">
-    <div class="page-title">语音设置</div>
-    <div class="page-desc">选择音色并试听。百约平时不发语音，只有你对她说「说句话」时才会</div>
-
-    <div class="card">
-      <div class="card-header"><span class="dot green"></span> 试听音色</div>
-      <div class="preview-row">
-        <input id="preview-text" value="百裏怎么这么帅" class="field input" style="margin:0">
-        <button class="btn btn-primary btn-sm" onclick="previewVoice()" id="preview-btn" style="white-space:nowrap">▶ 试听</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header"><span class="dot green"></span> 可用音色（点击选中）</div>
-      <div class="voice-list" id="voice-list"></div>
-    </div>
-
-    <div class="card">
+  <!-- ═══════ 语音 ═══════ -->
+  <section id="panel-voice" class="panel">
+    <div class="section-title">语音设置</div>
+    <div class="setup-card">
+      <h3><span class="dot"></span>全局开关</h3>
       <div class="toggle-row">
-        <div>
-          <div class="toggle-label">启用语音消息</div>
-          <div class="toggle-hint">关闭后百约只发文字，不发语音</div>
-        </div>
+        <div><div class="toggle-label">启用语音消息</div><div class="toggle-hint">关闭后只发文字，不发语音</div></div>
         <div class="toggle-switch on" id="toggle-voice" onclick="toggleVoice()"></div>
-        <input type="checkbox" id="cfg-VOICE_ENABLED" style="display:none">
       </div>
     </div>
+    <div class="setup-card">
+      <h3><span class="dot"></span>试听音色</h3>
+      <div style="display:flex;gap:10px"><input id="preview-text" value="百裏怎么这么帅" style="flex:1"><button class="btn btn-primary btn-sm" onclick="previewVoice()" id="preview-btn">▶ 试听</button></div>
+    </div>
+    <div class="setup-card">
+      <h3><span class="dot"></span>音色（点击选中）</h3>
+      <div class="voice-grid" id="voice-list"></div>
+    </div>
+    <div class="btn-row"><button class="btn btn-primary" onclick="saveVoice()">保存语音设置</button></div>
+  </section>
 
-    <button class="btn btn-primary" onclick="saveVoice()">保存语音设置</button>
-  </div>
+  <!-- ═══════ 记忆 ═══════ -->
+  <section id="panel-memory" class="panel">
+    <div class="section-title" style="justify-content:space-between"><span>记忆管理</span><button class="btn btn-outline btn-sm" onclick="exportAllMemory('json')">📦 导出全部</button></div>
+    <div class="bento" style="margin-bottom:16px" id="mem-stats"></div>
+    <div class="mem-layout">
+      <div class="mem-sidebar" id="mem-user-list"></div>
+      <div class="mem-main">
+        <div id="mem-detail-empty" style="text-align:center;padding:40px;color:var(--text3)">👈 选择用户查看记忆</div>
+        <div id="mem-detail" style="display:none">
+          <div class="setup-card" style="margin-bottom:10px" id="mem-summary-card" >
+            <h3><span class="dot"></span>长期记忆摘要</h3>
+            <p id="mem-summary-text" style="font-size:0.8rem;color:var(--text2);line-height:1.7"></p>
+          </div>
+          <div class="setup-card" style="margin-bottom:0">
+            <h3 style="justify-content:space-between">
+              <span><span class="dot"></span><span id="mem-conv-title">最近对话</span></span>
+              <span style="display:flex;gap:6px">
+                <button class="btn btn-outline btn-sm" onclick="exportMemory('json')">JSON</button>
+                <button class="btn btn-outline btn-sm" onclick="exportMemory('txt')">文本</button>
+                <button class="btn btn-ghost btn-sm btn-danger" onclick="clearCurrentMemory()">清空</button>
+              </span>
+            </h3>
+            <div id="mem-conv-list" style="max-height:300px;overflow-y:auto"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
+  <!-- ═══════ 赞助 ═══════ -->
+  <section id="panel-sponsors" class="panel">
+    <div class="section-title">赞助名单</div>
+    <p style="font-size:0.84rem;color:var(--text2);margin-bottom:20px">感谢每一位支持百约的捐助者，你们的 token 让百约变得更好</p>
+    <div class="sponsor-grid" id="sponsor-cards"></div>
+    <div class="qr-card">
+      <div style="font-size:1.1rem;font-weight:700;margin-bottom:6px">📱 加入百约交流群</div>
+      <div style="font-size:0.82rem;color:var(--text2);margin-bottom:16px">群号：<code style="font-size:0.9rem;font-weight:600;color:var(--gold)">227077265</code></div>
+      <img src="/qrcode.jpg" alt="群二维码" style="width:180px;height:180px;border-radius:12px;border:1px solid var(--border);object-fit:cover">
+      <div style="font-size:0.72rem;color:var(--text3);margin-top:8px">扫码加入，一起聊天一起写代码</div>
+    </div>
+  </section>
+
+</div>
 </div>
 
 <div class="toast-container" id="toast-container"></div>
 
 <script>
-const DEFAULT_OWNER = """ + json.dumps(DEFAULT_OWNER_PROMPT) + r""";
-const DEFAULT_OTHER = """ + json.dumps(DEFAULT_OTHER_PROMPT) + r""";
-const CATGIRL_OWNER = """ + json.dumps(CATGIRL_OWNER_PROMPT) + r""";
-const CATGIRL_OTHER = """ + json.dumps(CATGIRL_OTHER_PROMPT) + r""";
-const DOUDOU_OWNER = """ + json.dumps(DOUDOU_OWNER_PROMPT) + r""";
-const DOUDOU_OTHER = """ + json.dumps(DOUDOU_OTHER_PROMPT) + r""";
-const YANG_OWNER = """ + json.dumps(YANG_OWNER_PROMPT) + r""";
-const YANG_OTHER = """ + json.dumps(YANG_OTHER_PROMPT) + r""";
-const ZHIYAN_OWNER = """ + json.dumps(ZHIYAN_OWNER_PROMPT) + r""";
-const ZHIYAN_OTHER = """ + json.dumps(ZHIYAN_OTHER_PROMPT) + r""";
-const HINATA_OWNER = """ + json.dumps(HINATA_OWNER_PROMPT) + r""";
-const HINATA_OTHER = """ + json.dumps(HINATA_OTHER_PROMPT) + r""";
-const BUILTIN_CARDS = """ + json.dumps(BUILTIN_PERSONALITIES, ensure_ascii=False) + r""";
+// ====== 华丽星空银河 ======
+const canvas = document.getElementById('starfield');
+const ctx = canvas.getContext('2d');
+let stars = [], shootingStars = [], nebulae = [];
+let W, H;
 
-const COMPANION_OPTIONS = [
-  {id:'girlfriend',name:'AI 女友',icon:'💕',desc:'百约是女生，你是男朋友'},
-  {id:'boyfriend',name:'AI 男友',icon:'💙',desc:'百约是男生，你是女朋友'},
-  {id:'assistant',name:'酷酷助手',icon:'🤖',desc:'不谈感情，纯帮忙'},
-];
+function resizeStarfield() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resizeStarfield();
+window.addEventListener('resize', () => { resizeStarfield(); initAll(); });
 
-// ── 人格卡片系统 ──
-let cards = [];           // 所有人格卡片
-let activeCardId = 'default';  // 当前生效的人格
-let selectedCardId = null;     // 正在编辑的卡片
+function initAll() {
+  // 恒星 — 500颗，大小不一
+  stars = [];
+  for (let i = 0; i < 500; i++) {
+    const type = Math.random();
+    stars.push({
+      x: Math.random() * W, y: Math.random() * H,
+      r: type > 0.95 ? 2.5 + Math.random() * 2 : (type > 0.7 ? 1.0 + Math.random() * 1.2 : 0.3 + Math.random() * 0.7),
+      speed: Math.random() * 0.25 + 0.05,
+      opacity: 0.3 + Math.random() * 0.7,
+      phase: Math.random() * Math.PI * 2,
+      color: type > 0.92 ? ['#ffe8c0','#d4c8ff','#c8e8ff','#ffd8d0'][Math.floor(Math.random()*4)] : '#ffffff'
+    });
+  }
 
-let config = {};
-let companionType = 'girlfriend';
-let voices = [];
-let audioEl = null;
+  // 星云团
+  nebulae = [];
+  for (let i = 0; i < 6; i++) {
+    nebulae.push({
+      x: Math.random() * W, y: Math.random() * H,
+      rx: 150 + Math.random() * 300, ry: 80 + Math.random() * 180,
+      color: ['rgba(180,150,220,0.04)', 'rgba(140,180,210,0.04)', 'rgba(200,160,180,0.035)', 'rgba(160,200,180,0.04)', 'rgba(220,180,140,0.03)', 'rgba(140,160,220,0.035)'][i],
+      drift: Math.random() * 0.3 + 0.1, phase: Math.random() * Math.PI * 2
+    });
+  }
+}
+initAll();
 
-// ── Init ──
-document.querySelectorAll('.nav-item').forEach(item => {
-  item.addEventListener('click', () => switchTab(item.dataset.tab));
+function spawnShooting() {
+  const types = [
+    {color:'#ffffff', tail:'rgba(255,255,255,'},
+    {color:'#ffe8c0', tail:'rgba(255,232,192,'},
+    {color:'#c8d8ff', tail:'rgba(200,216,255,'},
+    {color:'#ffd0c8', tail:'rgba(255,208,200,'},
+  ];
+  const t = types[Math.floor(Math.random()*types.length)];
+  shootingStars.push({
+    x: Math.random() * W * 0.8, y: Math.random() * H * 0.25,
+    len: Math.random() * 100 + 60, speed: Math.random() * 5 + 3,
+    life: 1, decay: Math.random() * 0.012 + 0.006,
+    color: t.color, tail: t.tail, width: Math.random() * 1.5 + 0.5
+  });
+}
+setInterval(() => { if (Math.random() < 0.5) spawnShooting(); }, 2000);
+spawnShooting(); spawnShooting();
+
+function drawStars() {
+  ctx.clearRect(0, 0, W, H);
+
+  const now = Date.now() * 0.001;
+
+  // 星云
+  for (const n of nebulae) {
+    const dx = Math.sin(now * n.drift + n.phase) * 40;
+    const dy = Math.cos(now * n.drift * 0.7 + n.phase) * 30;
+    const g = ctx.createRadialGradient(n.x + dx, n.y + dy, n.rx * 0.2, n.x + dx, n.y + dy, n.rx);
+    g.addColorStop(0, n.color); g.addColorStop(0.5, n.color.replace('0.04','0.015').replace('0.035','0.01').replace('0.03','0.008'));
+    g.addColorStop(1, 'transparent');
+    ctx.fillStyle = g;
+    ctx.fillRect(n.x - n.rx, n.y - n.ry, n.rx * 2, n.ry * 2);
+  }
+
+  // 银河主带 — 对角线大范围柔光
+  const mw = ctx.createRadialGradient(W * 0.5, H * 0.4, W * 0.05, W * 0.45, H * 0.55, Math.max(W, H) * 0.8);
+  mw.addColorStop(0, 'rgba(180,170,210,0.025)');
+  mw.addColorStop(0.3, 'rgba(150,160,200,0.015)');
+  mw.addColorStop(0.6, 'rgba(130,150,180,0.006)');
+  mw.addColorStop(1, 'transparent');
+  ctx.fillStyle = mw;
+  ctx.fillRect(0, 0, W, H);
+
+  // 暖色副带
+  const mw2 = ctx.createRadialGradient(W * 0.25, H * 0.65, W * 0.03, W * 0.3, H * 0.6, Math.max(W, H) * 0.55);
+  mw2.addColorStop(0, 'rgba(200,170,140,0.02)');
+  mw2.addColorStop(1, 'transparent');
+  ctx.fillStyle = mw2;
+  ctx.fillRect(0, 0, W, H);
+
+  // 星星
+  for (const s of stars) {
+    const twinkle = 0.4 + 0.6 * Math.sin(now * s.speed * 2.5 + s.phase);
+    const alpha = s.opacity * twinkle;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+    ctx.fillStyle = s.color.replace(')', ','+alpha+')').replace('rgb', 'rgba');
+    if (s.color === '#ffffff') {
+      ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+    }
+    ctx.fill();
+
+    // 亮星辉光
+    if (s.r > 1.8 && twinkle > 0.75) {
+      const glow = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r * 4);
+      glow.addColorStop(0, s.color === '#ffffff' ? `rgba(200,200,255,${alpha*0.2})` : s.color.replace(')', ','+(alpha*0.25)+')').replace('rgb','rgba'));
+      glow.addColorStop(1, 'transparent');
+      ctx.fillStyle = glow;
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 4, 0, Math.PI*2); ctx.fill();
+    }
+
+    // 十字闪烁（最亮的星）
+    if (s.r > 3 && twinkle > 0.9) {
+      ctx.strokeStyle = s.color === '#ffffff' ? `rgba(255,255,255,${alpha*0.3})` : 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath(); ctx.moveTo(s.x - s.r*6, s.y); ctx.lineTo(s.x + s.r*6, s.y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(s.x, s.y - s.r*6); ctx.lineTo(s.x, s.y + s.r*6); ctx.stroke();
+    }
+  }
+
+  // 流星
+  for (let i = shootingStars.length-1; i >= 0; i--) {
+    const ss = shootingStars[i];
+    ss.x += ss.speed; ss.y += ss.speed * 0.35; ss.life -= ss.decay;
+    if (ss.life <= 0) { shootingStars.splice(i,1); continue; }
+
+    // 尾迹
+    const g = ctx.createLinearGradient(ss.x, ss.y, ss.x-ss.len, ss.y-ss.len*0.35);
+    g.addColorStop(0, ss.tail + ss.life + ')');
+    g.addColorStop(0.3, ss.tail + ss.life * 0.6 + ')');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.strokeStyle = g; ctx.lineWidth = ss.width;
+    ctx.beginPath(); ctx.moveTo(ss.x, ss.y); ctx.lineTo(ss.x-ss.len, ss.y-ss.len*0.35); ctx.stroke();
+
+    // 头部光点
+    if (ss.life > 0.5) {
+      ctx.beginPath(); ctx.arc(ss.x, ss.y, ss.width*1.5, 0, Math.PI*2);
+      ctx.fillStyle = ss.tail + ss.life + ')'; ctx.fill();
+    }
+  }
+
+  requestAnimationFrame(drawStars);
+}
+drawStars();
+
+// ====== 导航 ======
+function switchTab(name) {
+  document.querySelectorAll('.topbar-nav a').forEach(a => a.classList.toggle('active', a.dataset.tab === name));
+  document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === 'panel-' + name));
+  if (name === 'memory') loadMemoryUsers();
+  if (name === 'sponsors') renderSponsors();
+}
+document.querySelectorAll('.topbar-nav a').forEach(a => {
+  a.addEventListener('click', () => switchTab(a.dataset.tab));
 });
 
-async function loadAll() {
+// ====== 工具 ======
+function getVal(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+function setVal(id, val) { const el = document.getElementById(id); if (el) el.value = val || ''; }
+
+function toast(msg, type) {
+  const t = document.createElement('div'); t.className = 'toast' + (type==='error'?' error':'');
+  t.textContent = msg; document.getElementById('toast-container').appendChild(t);
+  setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 2000);
+}
+
+async function postConfig(data, label) {
   try {
-    const r = await fetch('/api/config');
-    config = await r.json();
-    voices = config._voices || [];
-    renderAll();
-    renderHomeStatus();
+    const r = await fetch('/api/config', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
+    const j = await r.json();
+    if (j.ok) { toast((label||'') + '已保存', 'success'); config = {...config, ...data}; }
+    else toast('保存失败: ' + (j.error||''), 'error');
+  } catch(e) { toast('连接失败', 'error'); }
+}
+
+// ====== 配置加载 ======
+let config = {};
+let companionType = 'girlfriend';
+async function loadConfig() {
+  try {
+    const r = await fetch('/api/config'); config = await r.json();
+    const voices = config._voices || [];
+
+    setVal('cfg-API_PROVIDER', config.API_PROVIDER||'deepseek');
+    setVal('cfg-API_BASE', config.API_BASE||'');
+    setVal('cfg-API_KEY', config.API_KEY||config.DEEPSEEK_KEY||'');
+    setVal('cfg-API_MODEL', config.API_MODEL||'');
+    setVal('cfg-OWNER_QQ', config.OWNER_QQ||'');
+    setVal('cfg-BOT_QQ', config.BOT_QQ||'');
+    setVal('cfg-OWNER_NAME', config.OWNER_NAME||'');
+    setVal('cfg-BOT_NAME', config.BOT_NAME||'');
+    companionType = config.COMPANION_TYPE || 'girlfriend';
+    setVal('cfg-COMPANION_TYPE', companionType);
+    setVal('cfg-PROMPT_OWNER_FILE', config.PROMPT_OWNER_FILE||'prompt_private.txt');
+
+    // 语音
+    setVal('preview-text', config.VOICE_VOICE ? '' : '百裏怎么这么帅');
+    const tv = document.getElementById('toggle-voice');
+    if (tv) { const von = !!config.VOICE_ENABLED; tv.classList.toggle('on', von); }
+
+    // 私密模式
+    const tp = document.getElementById('toggle-private');
+    if (tp) { const pon = !!config.PRIVATE_MODE; tp.classList.toggle('on', pon); }
+
+    // 人格卡片
+    let cards = config._personalities || [];
+    if (!cards.length) cards = JSON.parse(JSON.stringify(BUILTIN_CARDS));
+    window._cards = cards;
+    window._activeCardId = config.ACTIVE_PERSONALITY || 'default';
+    renderCards();
+    if (cards.length) selectCard(window._activeCardId, true);
+
+    // 语音
+    renderVoiceList(voices);
+
+    // 状态
+    checkStatus();
   } catch(e) { toast('无法连接配置服务', 'error'); }
 }
 
-function renderAll() {
-  setVal('cfg-API_PROVIDER', config.API_PROVIDER||'deepseek');
-  setVal('cfg-API_BASE', config.API_BASE||'');
-  setVal('cfg-API_KEY', config.API_KEY||config.DEEPSEEK_KEY||'');
-  setVal('cfg-API_MODEL', config.API_MODEL||'');
-  setVal('cfg-OWNER_QQ', config.OWNER_QQ||'');
-  setVal('cfg-OWNER_NAME', config.OWNER_NAME||'');
-  setVal('cfg-BOT_NAME', config.BOT_NAME||'');
-  setVal('cfg-BOT_QQ', config.BOT_QQ||'');
-  companionType = config.COMPANION_TYPE || 'girlfriend';
-  document.getElementById('cfg-VOICE_ENABLED').checked = !!config.VOICE_ENABLED;
-  document.getElementById('toggle-voice').classList.toggle('on', !!config.VOICE_ENABLED);
-  renderPrivateMode();
-  // 加载人格卡片
-  cards = config._personalities || [];
-  if (!cards.length) cards = JSON.parse(JSON.stringify(BUILTIN_CARDS));
-  activeCardId = config.ACTIVE_PERSONALITY || 'default';
-  if (!selectedCardId) selectedCardId = activeCardId;
-  renderCards();
-  renderCompanion();
-  renderVoices();
+async function checkStatus() {
+  try {
+    const r = await fetch('/api/status'); const s = await r.json();
+    document.getElementById('status-label').textContent = s.napcat_online ? 'QQ在线' : '离线';
+  } catch(e) {}
 }
 
-// ── 卡片列表渲染 ──
+// ====== 配置保存 ======
+async function saveConfig() {
+  await postConfig({
+    API_PROVIDER:getVal('cfg-API_PROVIDER'), API_BASE:getVal('cfg-API_BASE'),
+    API_KEY:getVal('cfg-API_KEY'), API_MODEL:getVal('cfg-API_MODEL'),
+    OWNER_QQ:getVal('cfg-OWNER_QQ'), BOT_QQ:getVal('cfg-BOT_QQ'),
+    OWNER_NAME:getVal('cfg-OWNER_NAME'), BOT_NAME:getVal('cfg-BOT_NAME'),
+    COMPANION_TYPE: companionType,
+  }, '配置');
+}
+
+// ====== 模型预设 ======
+const API_PRESETS = {
+  deepseek:{base:'https://api.deepseek.com',model:'deepseek-chat',hint:'注册获取 Key，充值10元能用很久'},
+  openai:{base:'https://api.openai.com/v1',model:'gpt-4o',hint:'在 platform.openai.com 注册获取'},
+  siliconflow:{base:'https://api.siliconflow.cn/v1',model:'Qwen/Qwen3-8B',hint:'国内平台，注册送额度'},
+  zhipu:{base:'https://open.bigmodel.cn/api/paas/v4',model:'glm-4',hint:'智谱AI，注册送额度'},
+  dashscope:{base:'https://dashscope.aliyuncs.com/compatible-mode/v1',model:'qwen-plus',hint:'阿里通义千问，有免费额度'},
+  moonshot:{base:'https://api.moonshot.cn/v1',model:'moonshot-v1-8k',hint:'月之暗面 Kimi，注册送额度'},
+  groq:{base:'https://api.groq.com/openai/v1',model:'llama-4-scout-17b-16e-instruct',hint:'国外免费，需梯子'},
+  ollama:{base:'http://localhost:11434/v1',model:'qwen2.5:7b',hint:'本地运行，无需 Key'},
+  custom:{base:'',model:'',hint:'手动填入 API 地址'}
+};
+
+function onProviderChange() {
+  const p = getVal('cfg-API_PROVIDER');
+  const preset = API_PRESETS[p] || {};
+  if (p !== 'custom') { setVal('cfg-API_BASE', preset.base||''); setVal('cfg-API_MODEL', preset.model||''); }
+  document.getElementById('hint-apikey').textContent = preset.hint || '';
+}
+
+// ====== 语音 ======
+function toggleVoice() {
+  const el = document.getElementById('toggle-voice');
+  el.classList.toggle('on');
+}
+
+function renderVoiceList(voices) {
+  const el = document.getElementById('voice-list');
+  if (!el || !voices || !voices.length) return;
+  const cur = config.VOICE_VOICE || 'zh-CN-XiaoxiaoNeural';
+  el.innerHTML = voices.map(v => `
+    <div class="voice-chip${v.id === cur ? ' selected' : ''}" onclick="selectVoice('${v.id}')">
+      <div class="vc-icon">${v.gender==='男'?'👨':'👩'}</div>
+      <div class="vc-name">${v.name}</div>
+      <div class="vc-tag">${v.style||''}</div>
+    </div>`).join('');
+}
+
+function selectVoice(id) {
+  document.querySelectorAll('.voice-chip').forEach(c => c.classList.remove('selected'));
+  const chips = document.querySelectorAll('.voice-chip');
+  const voices = config._voices || [];
+  const idx = voices.findIndex(v => v.id === id);
+  if (idx >= 0 && chips[idx]) chips[idx].classList.add('selected');
+  config.VOICE_VOICE = id;
+}
+
+async function previewVoice() {
+  const text = getVal('preview-text') || '百裏怎么这么帅';
+  const voice = config.VOICE_VOICE || 'zh-CN-XiaoxiaoNeural';
+  const btn = document.getElementById('preview-btn');
+  btn.textContent = '...'; btn.disabled = true;
+  try {
+    const r = await fetch('/api/voice/preview?text='+encodeURIComponent(text)+'&voice='+encodeURIComponent(voice));
+    const data = await r.json();
+    if (data.ok) {
+      const a = new Audio(); a.src = '/api/voice/preview?text='+encodeURIComponent(text)+'&voice='+encodeURIComponent(voice)+'&t='+Date.now();
+      a.play().catch(() => toast('播放失败', 'error'));
+    } else { toast('生成失败', 'error'); }
+  } catch(e) { toast('连接失败', 'error'); }
+  btn.textContent = '▶ 试听'; btn.disabled = false;
+}
+
+async function saveVoice() {
+  const von = document.getElementById('toggle-voice').classList.contains('on');
+  await postConfig({ VOICE_VOICE: config.VOICE_VOICE || 'zh-CN-XiaoxiaoNeural', VOICE_ENABLED: von }, '语音');
+}
+
+// ====== 人格 ======
+const BUILTIN_CARDS = """ + json.dumps(BUILTIN_PERSONALITIES) + r""";
+let selectedCardId = null;
+
 function renderCards() {
-  const list = document.getElementById('card-list');
-  list.innerHTML = cards.map(c => `
-    <div class="preset-card${selectedCardId===c.id?' selected':''}" onclick="selectCard('${c.id}')">
-      <div style="display:flex;align-items:center;gap:6px">
-        <span style="font-size:1.1rem">${c.icon||'📝'}</span>
-        <div>
-          <div style="font-size:0.85rem;font-weight:600;color:var(--text)">${c.name}</div>
-          <div style="font-size:0.7rem;color:var(--text3)">${c.author||''}</div>
-        </div>
-        ${activeCardId===c.id ? '<span style="margin-left:auto;font-size:0.6rem;padding:2px 6px;border-radius:99px;background:var(--accent);color:#fff">使用中</span>' : ''}
-      </div>
-    </div>
-  `).join('');
+  const el = document.getElementById('card-list');
+  if (!el) return;
+  const cards = window._cards || [];
+  const activeId = window._activeCardId;
+  el.innerHTML = cards.map(c => `
+    <div class="persona-card${c.id===activeId?' active':''}" onclick="selectCard('${c.id}')">
+      <span class="persona-icon">${c.icon||'📝'}</span> ${c.name}
+    </div>`).join('') + '<button class="btn btn-ghost btn-sm" style="width:100%;margin-top:4px" onclick="newCard()">+ 新建</button>';
 }
 
-function selectCard(id) {
+function selectCard(id, silent) {
   selectedCardId = id;
+  const cards = window._cards || [];
   const c = cards.find(x => x.id === id);
   if (!c) return;
-  document.getElementById('editor-title').textContent = '编辑：' + c.name;
-  document.getElementById('card-name').value = c.name;
-  setVal('cfg-PROMPT_OWNER', c.prompt_owner||'');
-  setVal('cfg-PROMPT_OTHER', c.prompt_other||'');
-  document.getElementById('active-badge').style.display = (activeCardId === id) ? 'inline-block' : 'none';
-  renderCards();
+  setVal('card-name', c.name||'');
+  setVal('card-prompt-owner', c.prompt_owner||'');
+  setVal('card-prompt-other', c.prompt_other||'');
+  document.getElementById('editor-title').textContent = '编辑人格 — ' + (c.name||'?');
+  document.getElementById('active-badge').style.display = (id === window._activeCardId) ? 'inline-block' : 'none';
+  if (!silent) {
+    document.querySelectorAll('.persona-card').forEach((el,i) => el.classList.toggle('active', (cards[i]||{}).id === id));
+  }
 }
 
-function saveCurrentCard() {
+function newCard() {
+  const cards = window._cards || [];
+  const id = 'custom_' + Date.now();
+  cards.push({id, name:'新人格', author:'我', icon:'📝', desc:'', prompt_owner:'', prompt_other:'', builtin:false});
+  window._cards = cards;
+  renderCards();
+  selectCard(id);
+}
+
+async function saveCurrentCard() {
   if (!selectedCardId) return;
-  let c = cards.find(x => x.id === selectedCardId);
+  const cards = window._cards || [];
+  const c = cards.find(x => x.id === selectedCardId);
   if (!c) return;
   c.name = getVal('card-name') || c.name;
-  c.prompt_owner = getVal('cfg-PROMPT_OWNER');
-  c.prompt_other = getVal('cfg-PROMPT_OTHER');
-  // 同步到旧的 config 字段（兼容 bot.py 加载）
-  config.PROMPT_OWNER = c.prompt_owner;
-  config.PROMPT_OTHER = c.prompt_other;
-  document.getElementById('editor-title').textContent = '编辑：' + c.name;
-  renderCards();
-  // 保存到服务器
-  postConfig({
+  c.prompt_owner = getVal('card-prompt-owner');
+  c.prompt_other = getVal('card-prompt-other');
+  await postConfig({
     _personalities: cards,
-    ACTIVE_PERSONALITY: activeCardId,
-    PROMPT_OWNER: activeCardId === selectedCardId ? c.prompt_owner : config.PROMPT_OWNER,
-    PROMPT_OTHER: activeCardId === selectedCardId ? c.prompt_other : config.PROMPT_OTHER,
+    ACTIVE_PERSONALITY: window._activeCardId,
+    PROMPT_OWNER: selectedCardId === window._activeCardId ? c.prompt_owner : config.PROMPT_OWNER,
+    PROMPT_OTHER: selectedCardId === window._activeCardId ? c.prompt_other : config.PROMPT_OTHER,
   }, '人格');
+  renderCards();
 }
 
-function setActiveCard() {
+async function setActiveCard() {
   if (!selectedCardId) return;
-  activeCardId = selectedCardId;
+  const cards = window._cards || [];
   const c = cards.find(x => x.id === selectedCardId);
-  // 激活的卡片内容写入 PROMPT_OWNER/PROMPT_OTHER
-  config.PROMPT_OWNER = c ? (c.prompt_owner||'') : '';
-  config.PROMPT_OTHER = c ? (c.prompt_other||'') : '';
-  postConfig({
+  window._activeCardId = selectedCardId;
+  await postConfig({
     _personalities: cards,
-    ACTIVE_PERSONALITY: activeCardId,
+    ACTIVE_PERSONALITY: selectedCardId,
     PROMPT_OWNER: c ? (c.prompt_owner||'') : '',
     PROMPT_OTHER: c ? (c.prompt_other||'') : '',
   }, '激活人格');
@@ -1321,449 +1424,129 @@ function setActiveCard() {
   document.getElementById('active-badge').style.display = 'inline-block';
 }
 
-function newCard() {
-  const id = 'custom_' + Date.now();
-  cards.push({
-    id, name: '新人格', author: '我', icon: '📝',
-    desc: '自定义人格', prompt_owner: '', prompt_other: '', builtin: false,
-  });
-  selectCard(id);
-}
-
-function deleteCard() {
+async function deleteCard() {
   if (!selectedCardId) return;
+  let cards = window._cards || [];
   const c = cards.find(x => x.id === selectedCardId);
-  if (c && c.builtin) { toast('内置人格不能删除，但可以编辑后保存为副本', 'error'); return; }
-  if (!confirm('确定删除「' + (c?c.name:'') + '」？')) return;
+  if (c && c.builtin) { toast('内置人格不能删除', 'error'); return; }
+  if (!confirm('确定删除？')) return;
   cards = cards.filter(x => x.id !== selectedCardId);
-  if (activeCardId === selectedCardId) {
-    activeCardId = cards.length ? cards[0].id : 'default';
-  }
-  selectedCardId = activeCardId;
-  config.PROMPT_OWNER = '';
-  config.PROMPT_OTHER = '';
-  postConfig({ _personalities: cards, ACTIVE_PERSONALITY: activeCardId, PROMPT_OWNER: '', PROMPT_OTHER: '' }, '删除人格');
+  if (window._activeCardId === selectedCardId) { window._activeCardId = 'default'; }
+  window._cards = cards;
+  selectedCardId = window._activeCardId;
+  await postConfig({ _personalities: cards, ACTIVE_PERSONALITY: window._activeCardId, PROMPT_OWNER:'', PROMPT_OTHER:'' }, '删除人格');
   renderCards();
-  if (cards.length) selectCard(selectedCardId);
+  if (cards.length) selectCard(window._activeCardId);
 }
 
-function renderCompanion() {
-  const el = document.getElementById('companion-selector');
-  if (!el) return;
-  el.innerHTML = COMPANION_OPTIONS.map(c => `
-    <div class="preset-card${companionType===c.id?' selected':''}" onclick="selectCompanion('${c.id}')" style="text-align:center">
-      <div style="font-size:1.5rem">${c.icon}</div>
-      <div class="preset-name">${c.name}</div>
-      <div class="preset-desc">${c.desc}</div>
-    </div>
-  `).join('');
-}
-
-function selectCompanion(id) {
-  companionType = id;
-  renderCompanion();
-}
-
-function renderVoices() {
-  const list = document.getElementById('voice-list');
-  if (!voices.length) {
-    list.innerHTML = '<div class="empty-state"><div class="icon">🎙</div>暂无可用音色</div>';
-    return;
-  }
-  list.innerHTML = voices.map(v => `
-    <div class="voice-card${config.VOICE_VOICE===v.id?' selected':''}" onclick="selectVoice('${v.id}')">
-      <div class="voice-avatar ${v.gender==='女'?'female':'male'}">${v.gender==='女'?'♀':'♂'}</div>
-      <div class="voice-info">
-        <div class="voice-name">${v.name}</div>
-        <div class="voice-tags"><span>${v.style}</span><span>${v.gender}</span></div>
-      </div>
-      <div class="preview-dot" onclick="event.stopPropagation();previewSingleVoice('${v.id}',this)" title="试听">▶</div>
-    </div>
-  `).join('');
-}
-
-// ── Helpers ──
-function setVal(id,v){const el=document.getElementById(id);if(!el)return;el.type==='checkbox'?el.checked=!!v:el.value=v;}
-function getVal(id){const el=document.getElementById(id);if(!el)return'';return el.type==='checkbox'?el.checked:el.value;}
-
-// ── Nav ──
-function switchTab(name) {
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.tab===name));
-  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+name));
-  if (name === 'home') renderHomeStatus();
-  if (name === 'memory') loadMemoryUsers();
-  if (name === 'sponsors') renderSponsors();
-}
-
-async function renderHomeStatus() {
-  const el = document.getElementById('home-status');
-  if (!el) return;
-  try {
-    const r = await fetch('/api/status');
-    const s = await r.json();
-    const online = s.napcat_online ? '🟢 QQ在线' : '⚫ QQ离线';
-    const running = s.bot_running ? '🟢 Bot运行中' : '⚫ Bot未启动';
-    el.innerHTML = '<span style="font-size:0.82rem;color:var(--text2)">' + online + ' &nbsp;·&nbsp; ' + running + '</span>';
-  } catch(e) {
-    el.innerHTML = '<span style="font-size:0.82rem;color:var(--text2)">检查状态中...</span>';
-  }
-}
-
-// ── Toggle ──
-function toggleVoice() {
-  const on = !document.getElementById('toggle-voice').classList.contains('on');
-  document.getElementById('toggle-voice').classList.toggle('on',on);
-  document.getElementById('cfg-VOICE_ENABLED').checked = on;
-}
-
-// ── 私密模式 ──
-let privateExpanded = false;
-function togglePrivate() {
-  privateExpanded = !privateExpanded;
-  document.getElementById('private-body').style.display = privateExpanded ? 'block' : 'none';
-  document.getElementById('private-arrow').textContent = privateExpanded ? '▼' : '▶';
-}
-
+// ====== 私密模式 ======
 function togglePrivateMode() {
-  const current = document.getElementById('cfg-PRIVATE_MODE').checked;
+  const el = document.getElementById('toggle-private');
+  const current = el.classList.contains('on');
   if (!current) {
-    // 开启前弹窗警告
-    if (!confirm('⚠️ 私密模式包含成人/亲密内容\n\n仅适合16岁以上用户。\n开启后私密文件会覆盖所有其他人格设定。\n\n确定开启？')) {
-      return;
-    }
+    if (!confirm('⚠️ 私密模式包含成人/亲密内容\n\n仅适合16岁以上用户。\n开启后私密文件会覆盖所有其他人格设定。\n\n确定开启？')) return;
   }
-  const on = !current;
-  document.getElementById('cfg-PRIVATE_MODE').checked = on;
-  const toggle = document.getElementById('toggle-private');
-  toggle.style.background = on ? '#43b883' : '#d1d5db';
-  toggle.firstElementChild.style.left = on ? '23px' : '3px';
-  document.getElementById('private-status').textContent = on ? '⚠️ 已开启' : '';
-  // 自动展开以显示配置
-  if (on && !privateExpanded) togglePrivate();
-  // 自动保存
-  savePrivateMode();
+  el.classList.toggle('on');
+  const on = el.classList.contains('on');
+  postConfig({ PRIVATE_MODE: on, PROMPT_OWNER_FILE: getVal('cfg-PROMPT_OWNER_FILE')||'prompt_private.txt' }, '私密模式');
 }
 
-async function savePrivateMode() {
-  await postConfig({
-    PRIVATE_MODE: document.getElementById('cfg-PRIVATE_MODE').checked,
-    PROMPT_OWNER_FILE: getVal('cfg-PROMPT_OWNER_FILE') || 'prompt_private.txt',
-  }, '私密模式');
-}
-
-function renderPrivateMode() {
-  const on = !!config.PRIVATE_MODE;
-  document.getElementById('cfg-PRIVATE_MODE').checked = on;
-  const toggle = document.getElementById('toggle-private');
-  toggle.style.background = on ? '#43b883' : '#d1d5db';
-  toggle.firstElementChild.style.left = on ? '23px' : '3px';
-  document.getElementById('private-status').textContent = on ? '⚠️ 已开启' : '';
-  setVal('cfg-PROMPT_OWNER_FILE', config.PROMPT_OWNER_FILE || 'prompt_private.txt');
-}
-
-// ── Save ──
-async function saveConfig() {
-  await postConfig({
-    API_PROVIDER:getVal('cfg-API_PROVIDER'), API_BASE:getVal('cfg-API_BASE'),
-    API_KEY:getVal('cfg-API_KEY'), API_MODEL:getVal('cfg-API_MODEL'),
-    OWNER_QQ:getVal('cfg-OWNER_QQ'), OWNER_NAME:getVal('cfg-OWNER_NAME'),
-    BOT_NAME:getVal('cfg-BOT_NAME'), BOT_QQ:getVal('cfg-BOT_QQ'),
-    COMPANION_TYPE: companionType,
-  }, '配置');
-}
-
-// ── 模型提供商切换：自动填充 Base URL 和模型名 ──
-const API_PRESETS = {
-  deepseek:    {base:'https://api.deepseek.com',                   model:'deepseek-chat',          hint:'注册获取 Key，充值10元能用很久'},
-  openai:      {base:'https://api.openai.com/v1',                  model:'gpt-4o',                 hint:'在 platform.openai.com 注册获取'},
-  siliconflow: {base:'https://api.siliconflow.cn/v1',              model:'Qwen/Qwen3-8B',          hint:'国内平台，注册送额度，模型超多'},
-  zhipu:       {base:'https://open.bigmodel.cn/api/paas/v4',       model:'glm-4',                  hint:'智谱AI，注册送额度，GLM系列模型'},
-  dashscope:   {base:'https://dashscope.aliyuncs.com/compatible-mode/v1', model:'qwen-plus',   hint:'阿里通义千问，有免费额度'},
-  moonshot:    {base:'https://api.moonshot.cn/v1',                 model:'moonshot-v1-8k',         hint:'月之暗面 Kimi，注册送额度'},
-  groq:        {base:'https://api.groq.com/openai/v1',             model:'llama-4-scout-17b-16e-instruct', hint:'国外平台，免费但需梯子，速度极快'},
-  ollama:      {base:'http://localhost:11434/v1',                  model:'qwen2.5:7b',             hint:'本地运行，无需 Key，留空即可'},
-  custom:      {base:'', model:'', hint:'手动填入你的 API 地址和 Key'},
-};
-
-function onProviderChange() {
-  const p = document.getElementById('cfg-API_PROVIDER').value;
-  const preset = API_PRESETS[p] || {};
-  if (p !== 'custom') {
-    document.getElementById('cfg-API_BASE').value = preset.base || '';
-    document.getElementById('cfg-API_MODEL').value = preset.model || '';
-  }
-  document.getElementById('hint-apikey').textContent = preset.hint || '';
-}
-
-// savePersonality / resetPersonality 已被卡片系统取代（saveCurrentCard / deleteCard）
-
-async function saveVoice() {
-  await postConfig({ VOICE_ENABLED:document.getElementById('cfg-VOICE_ENABLED').checked }, '语音设置');
-}
-
-async function postConfig(data, label) {
-  try {
-    const r = await fetch('/api/config',{method:'POST',body:JSON.stringify(data)});
-    if(r.ok) { toast(label+'已保存！重启 bot.py 生效','success'); }
-    else { toast('保存失败','error'); }
-  } catch(e) { toast('保存失败: '+e.message,'error'); }
-}
-
-// ── Voice ──
-function selectVoice(voiceId) {
-  config.VOICE_VOICE = voiceId;
-  fetch('/api/config',{method:'POST',body:JSON.stringify({VOICE_VOICE:voiceId})});
-  renderVoices();
-}
-
-async function previewVoice() {
-  const text = getVal('preview-text'); if(!text) return;
-  const btn = document.getElementById('preview-btn');
-  btn.textContent='⏳'; btn.disabled=true;
-  await playPreview(text, config.VOICE_VOICE);
-  btn.textContent='▶ 试听'; btn.disabled=false;
-}
-
-async function previewSingleVoice(voiceId, dot) {
-  const text = getVal('preview-text')||'你好呀';
-  dot.classList.add('loading'); dot.textContent='';
-  await playPreview(text, voiceId);
-  dot.classList.remove('loading'); dot.textContent='▶';
-}
-
-async function playPreview(text, voice) {
-  try {
-    const r = await fetch('/api/voice/preview?text='+encodeURIComponent(text)+'&voice='+encodeURIComponent(voice));
-    if(r.ok){const blob=await r.blob();playAudio(blob);}
-    else {
-      const data = await r.json();
-      toast(data.error || '语音生成失败','error');
-    }
-  } catch(e) { toast('语音生成失败，请检查网络连接','error'); }
-}
-
-function playAudio(blob) {
-  if(audioEl){audioEl.pause();URL.revokeObjectURL(audioEl.src);}
-  audioEl=new Audio(URL.createObjectURL(blob));
-  audioEl.play();
-}
-
-// ── Sponsors ──
-const SPONSORS = [
-  {name:'朱大师', tokens:'20000万', icon:'👑', color:'#f5a623'},
-  {name:'游手好闲鑫大人', tokens:'10000万', icon:'💎', color:'#a78bfa'},
-  {name:'懋懋', tokens:'2000万', icon:'🌟', color:'#f472b6'},
-  {name:'义父', tokens:'1000万', icon:'🎖', color:'#60a5fa'},
-  {name:'豆豆', tokens:'1000万', icon:'💝', color:'#34d399', note:'🐕 贡献了「豆豆·AI男友」人格模型'},
-  {name:'葵', tokens:'1000万', icon:'🌻', color:'#fb923c', note:'☀️ 贡献了「阳·AI男友」人格模型'},
-  {name:'易落', tokens:'1000万', icon:'🍀', color:'#a3e635'},
-];
+// ====== 赞助 ======
+const SPONSORS = """ + json.dumps(SPONSORS) + r""";
 
 function renderSponsors() {
   const el = document.getElementById('sponsor-cards');
   if (!el) return;
   el.innerHTML = SPONSORS.map((s, i) => `
-    <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:20px;position:relative;overflow:hidden;box-shadow:var(--shadow)">
-      <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;border-radius:50%;background:${s.color};opacity:0.08"></div>
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-        <div style="width:44px;height:44px;border-radius:50%;background:${s.color}15;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">${s.icon}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:0.95rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.name}</div>
-          <div style="font-size:0.72rem;color:var(--text3)">捐助者</div>
-        </div>
+    <div class="sponsor-card">
+      <div class="sc-glow" style="background:${s.color}"></div>
+      <div class="sc-top">
+        <div class="sc-avatar" style="background:${s.color}15">${s.icon}</div>
+        <div><div class="sc-name">${s.name}</div><div class="sc-role">捐助者</div></div>
       </div>
-      <div style="display:flex;align-items:baseline;gap:4px">
-        <span style="font-size:1.5rem;font-weight:800;color:${s.color}">${s.tokens}</span>
-        <span style="font-size:0.8rem;color:var(--text3)">token</span>
-      </div>
-      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:0.75rem;color:var(--text3)">
-        ${s.note ? s.note :
-          i === 0 ? '🏆 百约最大的支持者，万分感谢！' :
-          i === 1 ? '💜 豪掷万金，百约铭记于心！' :
-          i === 2 ? '💗 猫娘的创造者，谢谢懋懋！' :
-          '🤝 感谢每一份支持，百约会越来越好'}
-      </div>
-    </div>
-  `).join('');
+      <div class="sc-tokens"><span class="sc-amount" style="color:${s.color}">${s.tokens}</span><span class="sc-unit">token</span></div>
+      <div class="sc-note">${s.note || (i===0?'🏆 百约最大的支持者，万分感谢！':i===1?'💜 豪掷万金，百约铭记于心！':i===2?'💗 猫娘的创造者，谢谢懋懋！':'🤝 感谢每一份支持，百约会越来越好')}</div>
+    </div>`).join('');
 }
 
-// ── Memory ──
-let memUsers = [];
-let memSelectedUser = null;
+// ====== 记忆 ======
+let memUsers = [], memSelectedUser = null;
 
 async function loadMemoryUsers() {
   try {
-    const r = await fetch('/api/memory');
-    const data = await r.json();
-    if (data.ok) {
-      memUsers = data.users || [];
-      renderMemoryUsers();
-      renderMemoryStats();
-    }
+    const r = await fetch('/api/memory'); const data = await r.json();
+    if (data.ok) { memUsers = data.users || []; renderMemoryUsers(); renderMemoryStats(); }
   } catch(e) {}
 }
 
 function renderMemoryStats() {
-  const total = memUsers.length;
-  const totalMsgs = memUsers.reduce((s,u) => s + u.msg_count, 0);
+  const el = document.getElementById('mem-stats');
+  if (!el) return;
+  const totalMsgs = memUsers.reduce((s,u) => s + (u.msg_count||0), 0);
   const withSummary = memUsers.filter(u => u.has_summary).length;
-  document.getElementById('mem-stats').innerHTML = [
-    {label:'对话用户',value:total+' 人',icon:'👥'},
-    {label:'消息总数',value:totalMsgs+' 条',icon:'💬'},
-    {label:'有长期记忆',value:withSummary+' 人',icon:'📋'},
-  ].map(s => `
-    <div class="card" style="padding:16px;text-align:center;margin-bottom:0">
-      <div style="font-size:1.5rem;margin-bottom:4px">${s.icon}</div>
-      <div style="font-size:1.3rem;font-weight:700;color:var(--text)">${s.value}</div>
-      <div style="font-size:0.75rem;color:var(--text3)">${s.label}</div>
-    </div>
-  `).join('');
+  el.innerHTML = [
+    {num:memUsers.length, lbl:'对话用户'},
+    {num:totalMsgs, lbl:'消息总数'},
+    {num:withSummary, lbl:'有长期记忆'},
+  ].map(s => `<div class="bento-feat"><div class="num">${s.num}</div><div class="lbl">${s.lbl}</div></div>`).join('');
 }
 
 function renderMemoryUsers() {
-  const list = document.getElementById('mem-user-list');
-  if (!memUsers.length) {
-    list.innerHTML = '<div class="empty-state"><div class="icon">📭</div>暂无对话记录</div>';
-    return;
-  }
-  list.innerHTML = memUsers.map(u => `
-    <div class="preset-card${memSelectedUser===u.id?' selected':''}" onclick="selectMemUser('${u.id}')" style="padding:12px 14px">
-      <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:1.1rem">${u.nickname === u.id ? '👤' : '💬'}</span>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:0.82rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${u.nickname}</div>
-          <div style="font-size:0.7rem;color:var(--text3)">${u.msg_count} 条消息${u.has_summary?' · 有摘要':''}</div>
-        </div>
-      </div>
-    </div>
-  `).join('');
+  const el = document.getElementById('mem-user-list');
+  if (!el) return;
+  el.innerHTML = memUsers.map(u => `
+    <div class="mem-user${memSelectedUser===u.id?' active':''}" onclick="selectMemUser('${u.id}')">
+      <span>${u.nickname||u.id}</span><span class="mem-badge">${u.msg_count||0}条</span>
+    </div>`).join('');
 }
 
-async function selectMemUser(userId) {
-  memSelectedUser = userId;
+async function selectMemUser(id) {
+  memSelectedUser = id;
   renderMemoryUsers();
-  document.getElementById('mem-detail-empty').style.display = 'none';
-  document.getElementById('mem-detail').style.display = 'block';
-
   try {
-    const r = await fetch('/api/memory?user=' + encodeURIComponent(userId));
-    const data = await r.json();
-    if (!data.ok) { toast('加载失败','error'); return; }
-
-    const mem = data.memory || {};
-    const recent = mem.recent || [];
-    const summary = mem.summary || '';
-
-    // 摘要
-    if (summary) {
-      document.getElementById('mem-summary-card').style.display = '';
+    const r = await fetch('/api/memory?user='+encodeURIComponent(id)); const data = await r.json();
+    if (data.ok && data.memory) {
+      const mem = data.memory;
+      const summary = (typeof mem === 'object' && mem.summary) ? mem.summary : '';
+      const recent = (typeof mem === 'object' && mem.recent) ? mem.recent : (Array.isArray(mem) ? mem : []);
+      document.getElementById('mem-detail-empty').style.display = 'none';
+      document.getElementById('mem-detail').style.display = '';
+      document.getElementById('mem-summary-card').style.display = summary ? '' : 'none';
       document.getElementById('mem-summary-text').textContent = summary;
-    } else {
-      document.getElementById('mem-summary-card').style.display = 'none';
+      document.getElementById('mem-conv-title').textContent = '最近对话 (' + recent.length + '条)';
+      document.getElementById('mem-conv-list').innerHTML = recent.slice(-60).map(m => `
+        <div class="msg-bubble"><div class="who">${m.role==='user'?'💬 用户':'🤖 百约'}</div><div class="what">${(m.content||'')}</div></div>`).join('');
     }
-
-    // 对话记录
-    document.getElementById('mem-conv-title').textContent = '对话记录（最近 ' + recent.length + ' 条）';
-    const convList = document.getElementById('mem-conv-list');
-    if (!recent.length) {
-      convList.innerHTML = '<div class="empty-state" style="padding:24px"><div style="font-size:1.5rem;opacity:0.4">🗨️</div>暂无消息</div>';
-    } else {
-      convList.innerHTML = recent.map((m, i) => {
-        const isUser = m.role === 'user';
-        const bubbleColor = isUser ? 'var(--bg)' : 'var(--accent-light)';
-        const align = isUser ? 'flex-start' : 'flex-end';
-        const label = isUser ? '👤' : '🤖';
-        return `
-          <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;justify-content:${align}">
-            <span style="font-size:0.75rem;flex-shrink:0;margin-top:8px">${label}</span>
-            <div style="background:${bubbleColor};padding:10px 14px;border-radius:12px;max-width:80%;font-size:0.82rem;line-height:1.55;color:var(--text);word-break:break-word">${escapeHtml(m.content || '')}</div>
-            ${!isUser ? '<span style="font-size:0.65rem;color:var(--text3);flex-shrink:0;margin-top:10px">#' + (Math.floor(i/2)+1) + '</span>' : ''}
-          </div>
-        `;
-      }).join('');
-    }
-  } catch(e) { toast('加载失败','error'); }
-}
-
-function escapeHtml(text) {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-function exportMemory(format) {
-  if (!memSelectedUser) { toast('请先选择用户', 'error'); return; }
-  const url = '/api/memory/export?user=' + encodeURIComponent(memSelectedUser) + '&format=' + format;
-  const a = document.createElement('a');
-  a.href = url; a.download = '';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  toast('导出中...', 'success');
-}
-
-function exportAllMemory(format) {
-  if (!confirm('确定导出全部用户的记忆（' + format.toUpperCase() + '格式）？')) return;
-  const url = '/api/memory/export?format=' + format;
-  const a = document.createElement('a');
-  a.href = url; a.download = '';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  toast('导出中...', 'success');
+  } catch(e) { toast('加载失败', 'error'); }
 }
 
 async function clearCurrentMemory() {
   if (!memSelectedUser) return;
   if (!confirm('确定清空该用户的所有记忆？此操作不可撤销。')) return;
   try {
-    const r = await fetch('/api/memory', {
-      method: 'POST',
-      body: JSON.stringify({user: memSelectedUser, action: 'clear'}),
-    });
+    const r = await fetch('/api/memory', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({user:memSelectedUser, action:'clear'}) });
     const data = await r.json();
-    if (data.ok) {
-      toast('记忆已清空', 'success');
-      memSelectedUser = null;
-      document.getElementById('mem-detail').style.display = 'none';
-      document.getElementById('mem-detail-empty').style.display = '';
-      loadMemoryUsers();
-    } else {
-      toast('清空失败: ' + (data.error||''), 'error');
-    }
-  } catch(e) { toast('清空失败','error'); }
+    if (data.ok) { toast('记忆已清空', 'success'); memSelectedUser=null; document.getElementById('mem-detail').style.display='none'; document.getElementById('mem-detail-empty').style.display=''; loadMemoryUsers(); }
+    else toast('清空失败: '+(data.error||''), 'error');
+  } catch(e) { toast('连接失败', 'error'); }
 }
 
-// ── Toast ──
-function toast(msg,type) {
-  const el=document.createElement('div');
-  el.className='toast '+type; el.textContent=msg;
-  document.getElementById('toast-container').appendChild(el);
-  setTimeout(()=>el.remove(),2600);
+function exportMemory(format) {
+  if (!memSelectedUser) { toast('请先选择用户', 'error'); return; }
+  const a = document.createElement('a'); a.href = '/api/memory/export?user='+encodeURIComponent(memSelectedUser)+'&format='+format;
+  a.download = ''; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  toast('导出中...', 'success');
 }
 
-// ── Status ──
-async function checkStatus() {
-  try {
-    const r = await fetch('/api/status');
-    const s = await r.json();
-    const dot = document.getElementById('status-dot');
-    const text = document.getElementById('status-text');
-    if (s.napcat_online) {
-      dot.style.background = 'var(--green)';
-      text.textContent = 'QQ 在线';
-    } else if (s.bot_running) {
-      dot.style.background = '#f0ad4e';
-      text.textContent = 'QQ 离线';
-    } else {
-      dot.style.background = 'var(--red)';
-      text.textContent = 'Bot 未运行';
-    }
-  } catch(e) {
-    document.getElementById('status-dot').style.background = 'var(--text3)';
-    document.getElementById('status-text').textContent = '无连接';
-  }
+function exportAllMemory(format) {
+  if (!confirm('确定导出全部用户的记忆（'+format.toUpperCase()+'格式）？')) return;
+  const a = document.createElement('a'); a.href = '/api/memory/export?format='+format;
+  a.download = ''; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  toast('导出中...', 'success');
 }
-checkStatus();
-setInterval(checkStatus, 30000);
 
-loadAll();
+// ====== 启动 ======
+loadConfig();
 </script>
 </body>
 </html>
@@ -1827,6 +1610,10 @@ class WebUIHandler(BaseHTTPRequestHandler):
 
         if path == "/baiyue-icon.jpg":
             self._send_image(LOGO_FILE)
+            return
+
+        if path == "/baiyue-mascot.jpg":
+            self._send_image(MASCOT_FILE)
             return
 
         if path == "/qrcode.jpg":
