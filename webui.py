@@ -549,24 +549,24 @@ HTML_PAGE = r"""<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>百约 · BaiYue</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%23ff6b8a'/><circle cx='16' cy='10' r='4' fill='white'/><path d='M10 24c0-4 2.7-6 6-6s6 2 6 6' fill='none' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%2343b883'/><circle cx='16' cy='10' r='4' fill='white'/><path d='M10 24c0-4 2.7-6 6-6s6 2 6 6' fill='none' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>">
 <style>
 :root {
-  --bg: #faf7f8;
+  --bg: #f7faf8;
   --sidebar-bg: #ffffff;
   --card-bg: #ffffff;
-  --border: #f0e6ea;
-  --text: #3d2c33;
-  --text2: #8c7380;
-  --text3: #b8a3ab;
-  --accent: #ff6b8a;
-  --accent-hover: #e85d7a;
-  --accent-light: #fff0f4;
-  --accent-border: #ffccd5;
-  --green: #5cb878;
+  --border: #e2ebe5;
+  --text: #2d3a32;
+  --text2: #6e8b78;
+  --text3: #9db8a7;
+  --accent: #43b883;
+  --accent-hover: #359a6b;
+  --accent-light: #eefbf3;
+  --accent-border: #b9ecd0;
+  --green: #43b883;
   --red: #e85d5d;
-  --shadow: 0 1px 3px rgba(60,20,30,0.06), 0 1px 2px rgba(60,20,30,0.04);
-  --shadow-lg: 0 4px 16px rgba(60,20,30,0.08);
+  --shadow: 0 1px 3px rgba(20,60,40,0.06), 0 1px 2px rgba(20,60,40,0.04);
+  --shadow-lg: 0 4px 16px rgba(20,60,40,0.08);
   --radius: 12px;
   --radius-sm: 8px;
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans SC", sans-serif;
@@ -661,7 +661,7 @@ body {
   margin-bottom:18px; display:flex; align-items:center; gap:8px;
 }
 .card-header .dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
-.card-header .dot.pink { background:var(--accent); }
+.card-header .dot.green { background:var(--accent); }
 
 /* ── Form ── */
 .field { margin-bottom:18px; }
@@ -873,7 +873,7 @@ body {
     <div class="page-desc">设置 API Key 和 QQ 账号绑定</div>
 
     <div class="card">
-      <div class="card-header"><span class="dot pink"></span> AI 模型</div>
+      <div class="card-header"><span class="dot green"></span> AI 模型</div>
       <div class="field">
         <label>模型提供商</label>
         <select id="cfg-API_PROVIDER" onchange="onProviderChange()">
@@ -907,7 +907,7 @@ body {
     </div>
 
     <div class="card">
-      <div class="card-header"><span class="dot pink"></span> QQ 账号绑定</div>
+      <div class="card-header"><span class="dot green"></span> QQ 账号绑定</div>
       <div class="grid-2">
         <div class="field">
           <label>主人的 QQ 号</label>
@@ -932,7 +932,7 @@ body {
     </div>
 
     <div class="card">
-      <div class="card-header"><span class="dot pink"></span> 伴侣模式</div>
+      <div class="card-header"><span class="dot green"></span> 伴侣模式</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px" id="companion-selector"></div>
       <div class="hint" style="margin-top:8px">选择百约与主人的关系类型</div>
     </div>
@@ -960,7 +960,7 @@ body {
         <div class="card">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
             <div class="card-header" style="margin-bottom:0">
-              <span class="dot pink"></span> <span id="editor-title">选择左侧卡片编辑</span>
+              <span class="dot green"></span> <span id="editor-title">选择左侧卡片编辑</span>
             </div>
             <span id="active-badge" style="font-size:0.7rem;padding:4px 10px;border-radius:99px;background:var(--accent-light);color:var(--accent);font-weight:600;display:none">当前使用</span>
           </div>
@@ -1025,7 +1025,7 @@ body {
       <!-- 左侧：用户列表 -->
       <div style="width:220px;flex-shrink:0">
         <div style="font-size:0.8rem;font-weight:600;color:var(--text2);letter-spacing:0.04em;margin-bottom:10px">
-          <span class="dot pink" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:6px"></span> 对话用户
+          <span class="dot green" style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:6px"></span> 对话用户
         </div>
         <div id="mem-user-list" style="display:flex;flex-direction:column;gap:6px;max-height:420px;overflow-y:auto">
           <div class="empty-state"><div class="icon">📭</div>暂无对话记录</div>
@@ -1041,14 +1041,14 @@ body {
         <div id="mem-detail" style="display:none">
           <!-- 摘要卡片 -->
           <div class="card" id="mem-summary-card" style="display:none">
-            <div class="card-header"><span class="dot pink"></span> 长期记忆摘要</div>
+            <div class="card-header"><span class="dot green"></span> 长期记忆摘要</div>
             <div id="mem-summary-text" style="font-size:0.85rem;color:var(--text2);line-height:1.7;white-space:pre-wrap"></div>
           </div>
           <!-- 对话列表 -->
           <div class="card">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
               <div class="card-header" style="margin-bottom:0">
-                <span class="dot pink"></span> <span id="mem-conv-title">对话记录</span>
+                <span class="dot green"></span> <span id="mem-conv-title">对话记录</span>
               </div>
               <button class="btn btn-secondary btn-sm" onclick="clearCurrentMemory()" style="color:var(--red);border-color:var(--red)">🗑 清空记忆</button>
             </div>
@@ -1084,7 +1084,7 @@ body {
     <div class="page-desc">选择音色并试听。百约平时不发语音，只有你对她说「说句话」时才会</div>
 
     <div class="card">
-      <div class="card-header"><span class="dot pink"></span> 试听音色</div>
+      <div class="card-header"><span class="dot green"></span> 试听音色</div>
       <div class="preview-row">
         <input id="preview-text" value="百裏怎么这么帅" class="field input" style="margin:0">
         <button class="btn btn-primary btn-sm" onclick="previewVoice()" id="preview-btn" style="white-space:nowrap">▶ 试听</button>
@@ -1092,7 +1092,7 @@ body {
     </div>
 
     <div class="card">
-      <div class="card-header"><span class="dot pink"></span> 可用音色（点击选中）</div>
+      <div class="card-header"><span class="dot green"></span> 可用音色（点击选中）</div>
       <div class="voice-list" id="voice-list"></div>
     </div>
 
@@ -1348,7 +1348,7 @@ function togglePrivateMode() {
   const on = !current;
   document.getElementById('cfg-PRIVATE_MODE').checked = on;
   const toggle = document.getElementById('toggle-private');
-  toggle.style.background = on ? '#f472b6' : '#d1d5db';
+  toggle.style.background = on ? '#43b883' : '#d1d5db';
   toggle.firstElementChild.style.left = on ? '23px' : '3px';
   document.getElementById('private-status').textContent = on ? '🔞 已开启' : '';
   // 自动展开以显示配置
@@ -1368,7 +1368,7 @@ function renderPrivateMode() {
   const on = !!config.PRIVATE_MODE;
   document.getElementById('cfg-PRIVATE_MODE').checked = on;
   const toggle = document.getElementById('toggle-private');
-  toggle.style.background = on ? '#f472b6' : '#d1d5db';
+  toggle.style.background = on ? '#43b883' : '#d1d5db';
   toggle.firstElementChild.style.left = on ? '23px' : '3px';
   document.getElementById('private-status').textContent = on ? '🔞 已开启' : '';
   setVal('cfg-PROMPT_OWNER_FILE', config.PROMPT_OWNER_FILE || 'prompt_private.txt');
