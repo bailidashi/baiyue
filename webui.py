@@ -1015,7 +1015,12 @@ body {
 
   <!-- ════ MEMORY ════ -->
   <div id="panel-memory" class="panel">
-    <div class="page-title">记忆管理</div>
+    <div class="page-title" style="display:flex;justify-content:space-between;align-items:center">
+      <span>记忆管理</span>
+      <span>
+        <button class="btn btn-secondary btn-sm" onclick="exportAllMemory('json')">📦 导出全部</button>
+      </span>
+    </div>
     <div class="page-desc">查看百约和每个人的对话记录，管理长期记忆</div>
 
     <!-- 统计卡片 -->
@@ -1050,6 +1055,8 @@ body {
               <div class="card-header" style="margin-bottom:0">
                 <span class="dot green"></span> <span id="mem-conv-title">对话记录</span>
               </div>
+              <button class="btn btn-secondary btn-sm" onclick="exportMemory('json')">📥 导出JSON</button>
+              <button class="btn btn-secondary btn-sm" onclick="exportMemory('txt')">📄 导出文本</button>
               <button class="btn btn-secondary btn-sm" onclick="clearCurrentMemory()" style="color:var(--red);border-color:var(--red)">🗑 清空记忆</button>
             </div>
             <div id="mem-conv-list" style="max-height:400px;overflow-y:auto"></div>
@@ -1604,6 +1611,24 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
+function exportMemory(format) {
+  if (!memSelectedUser) { toast('请先选择用户', 'error'); return; }
+  const url = '/api/memory/export?user=' + encodeURIComponent(memSelectedUser) + '&format=' + format;
+  const a = document.createElement('a');
+  a.href = url; a.download = '';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  toast('导出中...', 'success');
+}
+
+function exportAllMemory(format) {
+  if (!confirm('确定导出全部用户的记忆（' + format.toUpperCase() + '格式）？')) return;
+  const url = '/api/memory/export?format=' + format;
+  const a = document.createElement('a');
+  a.href = url; a.download = '';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  toast('导出中...', 'success');
+}
+
 async function clearCurrentMemory() {
   if (!memSelectedUser) return;
   if (!confirm('确定清空该用户的所有记忆？此操作不可撤销。')) return;
@@ -1739,6 +1764,10 @@ class WebUIHandler(BaseHTTPRequestHandler):
 
         if path == "/api/memory":
             self._handle_memory_get()
+            return
+
+        if path == "/api/memory/export":
+            self._handle_memory_export()
             return
 
         if path == "/api/status":
@@ -1888,6 +1917,82 @@ class WebUIHandler(BaseHTTPRequestHandler):
                 except Exception:
                     pass
         self._send_json({"ok": True, "users": users})
+
+    def _handle_memory_export(self):
+        """GET /api/memory/export?user=xxx&format=json|txt — 导出记忆"""
+        from urllib.parse import urlparse, parse_qs
+        query = parse_qs(urlparse(self.path).query)
+        user_id = query.get("user", [None])[0]
+        fmt = query.get("format", ["json"])[0]
+
+        if user_id:
+            # 导出单个用户
+            mem_file = MEMORY_DIR / f"{user_id}.json"
+            if not mem_file.exists():
+                self._send_json({"ok": False, "error": "用户不存在"}, 404)
+                return
+            try:
+                data = json.loads(mem_file.read_text(encoding="utf-8"))
+            except Exception:
+                self._send_json({"ok": False, "error": "读取失败"}, 500)
+                return
+
+            if fmt == "txt":
+                content = self._format_memory_as_txt(user_id, data)
+                filename = f"baiyue_memory_{user_id}.txt"
+            else:
+                content = json.dumps(data, ensure_ascii=False, indent=2)
+                filename = f"baiyue_memory_{user_id}.json"
+        else:
+            # 导出全部用户
+            all_data = {}
+            if MEMORY_DIR.exists():
+                for f in sorted(MEMORY_DIR.glob("*.json")):
+                    try:
+                        all_data[f.stem] = json.loads(f.read_text(encoding="utf-8"))
+                    except Exception:
+                        pass
+            if fmt == "txt":
+                content = "\n\n".join(
+                    self._format_memory_as_txt(uid, data)
+                    for uid, data in all_data.items()
+                )
+                filename = "baiyue_memory_all.txt"
+            else:
+                content = json.dumps(all_data, ensure_ascii=False, indent=2)
+                filename = "baiyue_memory_all.json"
+
+        data_bytes = content.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/octet-stream")
+        self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+        self.send_header("Content-Length", str(len(data_bytes)))
+        self.end_headers()
+        self.wfile.write(data_bytes)
+
+    @staticmethod
+    def _format_memory_as_txt(user_id: str, data: dict) -> str:
+        """把记忆格式化为可读文本"""
+        lines = [f"用户: {user_id}", "=" * 40]
+        if isinstance(data, dict):
+            summary = data.get("summary", "")
+            if summary:
+                lines.append(f"\n[长期记忆摘要]\n{summary}")
+            recent = data.get("recent", [])
+            if recent:
+                lines.append(f"\n[最近对话] ({len(recent)} 条)")
+                lines.append("-" * 30)
+                for m in recent:
+                    role = "用户" if m.get("role") == "user" else "百约"
+                    content = m.get("content", "")[:200]
+                    lines.append(f"{role}: {content}")
+        else:
+            # 旧格式（纯列表）
+            for m in data:
+                role = "用户" if m.get("role") == "user" else "百约"
+                lines.append(f"{role}: {m.get('content', '')[:200]}")
+        lines.append("")
+        return "\n".join(lines)
 
     def _handle_memory_post(self):
         """POST /api/memory — 清空特定用户的记忆"""
