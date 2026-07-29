@@ -128,7 +128,7 @@ if PRIVATE_MODE:
         _pf = Path(__file__).parent / _prompt_file
         if _pf.exists():
             CUSTOM_PROMPT_OWNER = _pf.read_text(encoding="utf-8").strip()
-            print(f"  [配置] 🔞 私密模式已开启，加载: {_prompt_file}", flush=True)
+            print(f"  [配置] ⚠️ 私密模式已开启，加载: {_prompt_file}", flush=True)
         else:
             print(f"  [配置] ⚠️ 私密模式已开启但文件不存在: {_prompt_file}", flush=True)
     else:
@@ -165,7 +165,7 @@ if not CUSTOM_PROMPT_OTHER:
 # 调试：打印实际使用的人格配置
 print(f"  [配置] 伴侣模式: {COMPANION_TYPE}", flush=True)
 print(f"  [配置] 自定义人格: {'有' if CUSTOM_PROMPT_OWNER else '无(用预设)'}", flush=True)
-print(f"  [配置] 私密模式: {'🔞 开启' if PRIVATE_MODE else '关闭'}", flush=True)
+print(f"  [配置] 私密模式: {'⚠️ 开启' if PRIVATE_MODE else '关闭'}", flush=True)
 
 # 戳一戳回复词库
 POKE_REPLIES_OWNER = [

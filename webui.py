@@ -839,7 +839,10 @@ body {
     <span>百约</span>
   </div>
   <div class="sidebar-nav">
-    <div class="nav-item active" data-tab="config">
+    <div class="nav-item active" data-tab="home">
+      <span class="nav-icon">🏠</span> <span>首页</span>
+    </div>
+    <div class="nav-item" data-tab="config">
       <span class="nav-icon">⚙</span> <span>账号配置</span>
     </div>
     <div class="nav-item" data-tab="personality">
@@ -867,8 +870,69 @@ body {
 <!-- Main Content -->
 <div class="main">
 
+  <!-- ════ HOME ════ -->
+  <div id="panel-home" class="panel active">
+    <div style="text-align:center;padding:40px 0 30px">
+      <img src="/baiyue-icon.jpg" alt="百约" style="width:72px;height:72px;border-radius:50%;object-fit:cover;box-shadow:0 4px 16px rgba(20,60,40,0.15)">
+      <div style="font-size:1.8rem;font-weight:700;margin-top:16px;color:var(--text)">百约 · BaiYue</div>
+      <div style="font-size:1rem;color:var(--text2);margin-top:6px">「 我是 AI，但我懂你 」</div>
+      <div id="home-status" style="margin-top:14px"></div>
+    </div>
+
+    <!-- 功能介绍 -->
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px">
+      <div class="card" style="text-align:center;padding:20px 14px;margin-bottom:0">
+        <div style="font-size:2rem;margin-bottom:8px">💬</div>
+        <div style="font-weight:600;color:var(--text);margin-bottom:4px">QQ 智能聊天</div>
+        <div style="font-size:0.78rem;color:var(--text2)">私聊群聊、@回复<br>像真人一样自然对话</div>
+      </div>
+      <div class="card" style="text-align:center;padding:20px 14px;margin-bottom:0">
+        <div style="font-size:2rem;margin-bottom:8px">🎭</div>
+        <div style="font-weight:600;color:var(--text);margin-bottom:4px">多人格切换</div>
+        <div style="font-size:0.78rem;color:var(--text2)">内置6种人格卡片<br>支持自定义创建</div>
+      </div>
+      <div class="card" style="text-align:center;padding:20px 14px;margin-bottom:0">
+        <div style="font-size:2rem;margin-bottom:8px">🎤</div>
+        <div style="font-weight:600;color:var(--text);margin-bottom:4px">语音消息</div>
+        <div style="font-size:0.78rem;color:var(--text2)">15种微软免费音色<br>女声男声方言粤语</div>
+      </div>
+      <div class="card" style="text-align:center;padding:20px 14px;margin-bottom:0">
+        <div style="font-size:2rem;margin-bottom:8px">🧠</div>
+        <div style="font-weight:600;color:var(--text);margin-bottom:4px">长期记忆</div>
+        <div style="font-size:0.78rem;color:var(--text2)">记住聊天内容<br>自动压缩摘要</div>
+      </div>
+      <div class="card" style="text-align:center;padding:20px 14px;margin-bottom:0">
+        <div style="font-size:2rem;margin-bottom:8px">😊</div>
+        <div style="font-weight:600;color:var(--text);margin-bottom:4px">情绪感知</div>
+        <div style="font-size:0.78rem;color:var(--text2)">7种情绪自动切换<br>开心吃醋傲娇粘人</div>
+      </div>
+      <div class="card" style="text-align:center;padding:20px 14px;margin-bottom:0">
+        <div style="font-size:2rem;margin-bottom:8px">🤖</div>
+        <div style="font-weight:600;color:var(--text);margin-bottom:4px">多AI模型</div>
+        <div style="font-size:0.78rem;color:var(--text2)">8个AI提供商<br>一键切换不用改代码</div>
+      </div>
+    </div>
+
+    <!-- 快速开始 -->
+    <div class="card" style="margin-bottom:0">
+      <div class="card-header"><span class="dot green"></span> 快速开始</div>
+      <div style="display:flex;gap:20px;font-size:0.82rem;color:var(--text2);line-height:1.8">
+        <div style="flex:1">
+          <b style="color:var(--text)">1.</b> 打开 NapCatQQ 并登录<br>
+          <b style="color:var(--text)">2.</b> 在 NapCat WebUI 添加反向WS<br>
+          <span style="color:var(--accent)">ws://127.0.0.1:8001</span>
+        </div>
+        <div style="flex:1">
+          <b style="color:var(--text)">3.</b> 回到本页面 → 账号配置<br>
+          <b style="color:var(--text)">4.</b> 填入 API Key，保存<br>
+          <b style="color:var(--text)">5.</b> 运行 <code style="background:var(--accent-light);padding:2px 6px;border-radius:4px">python bot.py</code>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ════ CONFIG ════ -->
-  <div id="panel-config" class="panel active">
+  <div id="panel-config" class="panel">
     <div class="page-title">账号配置</div>
     <div class="page-desc">设置 API Key 和 QQ 账号绑定</div>
 
@@ -989,12 +1053,12 @@ body {
       <!-- ── 私密模式（折叠区）── -->
       <div class="card" style="margin-top:16px;border:1px dashed #e5e7eb">
         <div class="card-header" onclick="togglePrivate()" style="cursor:pointer;user-select:none;display:flex;justify-content:space-between;align-items:center">
-          <span><span id="private-arrow" style="display:inline-block;transition:0.2s">▶</span> 🔞 私密模式 <span style="font-size:0.7rem;color:#9ca3af">（成人内容，默认关闭）</span></span>
+          <span><span id="private-arrow" style="display:inline-block;transition:0.2s">▶</span> ⚠️ 私密模式</span>
           <span id="private-status" style="font-size:0.75rem;color:#9ca3af"></span>
         </div>
         <div id="private-body" style="display:none;padding:16px;border-top:1px solid #f3f4f6">
           <div style="background:#fef2f2;padding:12px;border-radius:8px;margin-bottom:12px;font-size:0.8rem;color:#991b1b">
-            ⚠️ 此功能包含成人/亲密内容，仅适合18岁以上用户。开启后私密文件会覆盖所有其他人格设定。
+            ⚠️ 此功能包含成人/亲密内容，仅适合16岁以上用户。开启后私密文件会覆盖所有其他人格设定。
           </div>
           <div class="field">
             <label>启用私密模式</label>
@@ -1163,6 +1227,7 @@ async function loadAll() {
     config = await r.json();
     voices = config._voices || [];
     renderAll();
+    renderHomeStatus();
   } catch(e) { toast('无法连接配置服务', 'error'); }
 }
 
@@ -1325,8 +1390,23 @@ function getVal(id){const el=document.getElementById(id);if(!el)return'';return 
 function switchTab(name) {
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.tab===name));
   document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+name));
+  if (name === 'home') renderHomeStatus();
   if (name === 'memory') loadMemoryUsers();
   if (name === 'sponsors') renderSponsors();
+}
+
+async function renderHomeStatus() {
+  const el = document.getElementById('home-status');
+  if (!el) return;
+  try {
+    const r = await fetch('/api/status');
+    const s = await r.json();
+    const online = s.napcat_online ? '🟢 QQ在线' : '⚫ QQ离线';
+    const running = s.bot_running ? '🟢 Bot运行中' : '⚫ Bot未启动';
+    el.innerHTML = '<span style="font-size:0.82rem;color:var(--text2)">' + online + ' &nbsp;·&nbsp; ' + running + '</span>';
+  } catch(e) {
+    el.innerHTML = '<span style="font-size:0.82rem;color:var(--text2)">检查状态中...</span>';
+  }
 }
 
 // ── Toggle ──
@@ -1348,7 +1428,7 @@ function togglePrivateMode() {
   const current = document.getElementById('cfg-PRIVATE_MODE').checked;
   if (!current) {
     // 开启前弹窗警告
-    if (!confirm('⚠️ 私密模式包含成人/亲密内容\n\n仅适合18岁以上用户。\n开启后私密文件会覆盖所有其他人格设定。\n\n确定开启？')) {
+    if (!confirm('⚠️ 私密模式包含成人/亲密内容\n\n仅适合16岁以上用户。\n开启后私密文件会覆盖所有其他人格设定。\n\n确定开启？')) {
       return;
     }
   }
@@ -1357,7 +1437,7 @@ function togglePrivateMode() {
   const toggle = document.getElementById('toggle-private');
   toggle.style.background = on ? '#43b883' : '#d1d5db';
   toggle.firstElementChild.style.left = on ? '23px' : '3px';
-  document.getElementById('private-status').textContent = on ? '🔞 已开启' : '';
+  document.getElementById('private-status').textContent = on ? '⚠️ 已开启' : '';
   // 自动展开以显示配置
   if (on && !privateExpanded) togglePrivate();
   // 自动保存
@@ -1377,7 +1457,7 @@ function renderPrivateMode() {
   const toggle = document.getElementById('toggle-private');
   toggle.style.background = on ? '#43b883' : '#d1d5db';
   toggle.firstElementChild.style.left = on ? '23px' : '3px';
-  document.getElementById('private-status').textContent = on ? '🔞 已开启' : '';
+  document.getElementById('private-status').textContent = on ? '⚠️ 已开启' : '';
   setVal('cfg-PROMPT_OWNER_FILE', config.PROMPT_OWNER_FILE || 'prompt_private.txt');
 }
 
