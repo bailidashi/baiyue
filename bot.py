@@ -53,6 +53,24 @@ API_PRESETS = {
 VOICE_VOICE = "zh-CN-XiaoxiaoNeural"
 VOICE_ENABLED = True
 
+# TTS 引擎: "edgetts" 或 "fishaudio"
+TTS_ENGINE = "edgetts"
+FISH_AUDIO_KEY = ""
+FISH_AUDIO_VOICE = "004f256c10834a8c9577ccb944f14be5"  # 默认 Karen Kujo
+FISH_AUDIO_MODEL = "s2.1-pro-free"
+
+# Fish Audio 二次元角色音色预设
+FISH_AUDIO_PRESETS = [
+    {"id": "004f256c10834a8c9577ccb944f14be5", "name": "Karen Kujo", "style": "元气活泼·少女", "gender": "女"},
+    {"id": "4261fb9f1f734ac9ae49af4e88a38245", "name": "Tamayo", "style": "温柔暖心·软妹", "gender": "女"},
+    {"id": "2e504bb14f9040f19b388e0c651816cb", "name": "Jeanette", "style": "开朗顽皮·甜妹", "gender": "女"},
+    {"id": "33173c6dc4e44716b7b4c249ce5e83af", "name": "Mahiru", "style": "明亮平静·文静", "gender": "女"},
+    {"id": "84a8fc095be14237a5489af2ea229ad0", "name": "夏洛蒂", "style": "高音活力·元气", "gender": "女"},
+    {"id": "7f7c9703948845fb925cbcf04b0c6aa1", "name": "Mifuyu", "style": "少女感·清澈", "gender": "女"},
+    {"id": "873a0f24753e4e1bb9f4fe3484e39cf2", "name": "耳郎响香", "style": "冷静酷飒", "gender": "女"},
+    {"id": "255d6a60dc2143509ab2d31be319e87b", "name": "Dramatic Anime", "style": "戏剧张力", "gender": "女"},
+]
+
 # 记忆目录
 MEMORY_DIR = Path(__file__).parent / "memory"
 MEMORY_DIR.mkdir(exist_ok=True)
@@ -114,6 +132,13 @@ if _web_cfg.get("BOT_QQ"):
 if _web_cfg.get("VOICE_VOICE"):
     VOICE_VOICE = _web_cfg["VOICE_VOICE"]
 VOICE_ENABLED = _web_cfg.get("VOICE_ENABLED", True)
+# Fish Audio 二次元 TTS
+if _web_cfg.get("TTS_ENGINE"):
+    TTS_ENGINE = _web_cfg["TTS_ENGINE"]
+if _web_cfg.get("FISH_AUDIO_KEY"):
+    FISH_AUDIO_KEY = _web_cfg["FISH_AUDIO_KEY"]
+if _web_cfg.get("FISH_AUDIO_VOICE"):
+    FISH_AUDIO_VOICE = _web_cfg["FISH_AUDIO_VOICE"]
 # AI伴侣模式: "girlfriend"=女友 / "boyfriend"=男友 / "assistant"=助手
 COMPANION_TYPE = _web_cfg.get("COMPANION_TYPE", "girlfriend")
 # 自定义人格提示词（优先级：私密文件 > 卡片系统 > PROMPT_OWNER字段 > 预设）
@@ -739,8 +764,8 @@ def _clean_for_voice(text: str) -> str:
     return clean.strip()
 
 
-def generate_voice(text: str) -> str | None:
-    """用 edge-tts 把文字转成 MP3 语音文件，返回文件路径"""
+def _generate_voice_edgetts(text: str) -> str | None:
+    """edge-tts（微软免费 TTS）"""
     clean_text = _clean_for_voice(text)
     if not clean_text or len(clean_text) < 2:
         return None
@@ -763,6 +788,67 @@ def generate_voice(text: str) -> str | None:
         except Exception:
             pass
         return None
+
+
+def _generate_voice_fishaudio(text: str) -> str | None:
+    """Fish Audio（二次元角色音色）"""
+    if not FISH_AUDIO_KEY:
+        return None
+    clean_text = _clean_for_voice(text)
+    if not clean_text or len(clean_text) < 2:
+        return None
+
+    output = tempfile.NamedTemporaryFile(suffix='.mp3', delete=False)
+    output_path = output.name
+    output.close()
+
+    try:
+        resp = requests.post(
+            "https://api.fish.audio/v1/tts",
+            headers={
+                "Authorization": f"Bearer {FISH_AUDIO_KEY}",
+                "Content-Type": "application/json",
+                "model": FISH_AUDIO_MODEL,
+            },
+            json={
+                "text": clean_text,
+                "reference_id": FISH_AUDIO_VOICE,
+                "format": "mp3",
+                "mp3_bitrate": 128,
+                "latency": "normal",
+            },
+            timeout=30,
+        )
+        if resp.status_code == 200:
+            with open(output_path, 'wb') as f:
+                f.write(resp.content)
+            print(f"  [FishTTS] 生成成功 ({len(resp.content)} bytes)", flush=True)
+            return output_path
+        else:
+            print(f"  [FishTTS错误] HTTP {resp.status_code}: {resp.text[:200]}", flush=True)
+            try:
+                os.unlink(output_path)
+            except Exception:
+                pass
+            return None
+    except Exception as e:
+        print(f"  [FishTTS异常] {e}", flush=True)
+        try:
+            os.unlink(output_path)
+        except Exception:
+            pass
+        return None
+
+
+def generate_voice(text: str) -> str | None:
+    """根据 TTS_ENGINE 选择引擎生成语音"""
+    if TTS_ENGINE == "fishaudio":
+        result = _generate_voice_fishaudio(text)
+        if result:
+            return result
+        # Fish Audio 失败时回退 edge-tts
+        print("  [TTS] Fish Audio 失败，回退到 edge-tts", flush=True)
+    return _generate_voice_edgetts(text)
 
 
 def send_qq_voice(target_id: str, voice_path: str, msg_type: str = "private"):
@@ -975,13 +1061,14 @@ def _handle_message(user_id: str, nickname: str, raw_message: str, group_id: str
         save_memory(user_id, mem)
         print(f"  [人格切换] {old_name} → {_current_personality_name}，已压缩旧对话为摘要并清空记忆", flush=True)
 
-    # ── 兜底：即使没发生运行时切换，磁盘上的记忆也可能属于旧人格（比如重启bot前切了人格）──
+    # ── 兜底：磁盘记忆可能属于旧人格（重启前切了人格，或旧格式记忆无标记）──
     if not personality_changed:
         mem = load_memory(user_id)
         mem_pid = mem.get("personality_id", "")
+        has_recent = bool(mem.get("recent", []))
         if mem_pid and mem_pid != _current_personality_id:
+            # 情况1：记忆明确属于旧人格 → 清空
             old_name = mem.get("personality_name", mem_pid)
-            # 压缩旧话题再清空
             old_recent = mem.get("recent", [])
             if old_recent:
                 topic_hint = "、".join([m["content"][:40] for m in old_recent[-6:] if m.get("role") == "user"])
@@ -995,6 +1082,12 @@ def _handle_message(user_id: str, nickname: str, raw_message: str, group_id: str
             mem["personality_name"] = _current_personality_name
             save_memory(user_id, mem)
             print(f"  [人格] 磁盘记忆属于「{old_name}」，当前人格为「{_current_personality_name}」，已清空", flush=True)
+        elif not mem_pid and has_recent:
+            # 情况2：旧格式记忆（升级前遗留），无 personality_id → 标注当前人格，下次切换就能检测
+            mem["personality_id"] = _current_personality_id
+            mem["personality_name"] = _current_personality_name
+            save_memory(user_id, mem)
+            print(f"  [人格] 旧格式记忆已标注为「{_current_personality_name}」", flush=True)
 
     # 特殊命令
     if user_msg.strip() in ["/清空", "/reset", "/忘记"]:

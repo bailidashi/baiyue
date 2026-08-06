@@ -8,6 +8,7 @@ import os
 import subprocess
 import tempfile
 import threading
+import requests
 from pathlib import Path
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
@@ -36,6 +37,10 @@ DEFAULT_CONFIG = {
     # ── 语音 ──
     "VOICE_VOICE": "zh-CN-XiaoxiaoNeural",
     "VOICE_ENABLED": True,
+    "TTS_ENGINE": "edgetts",          # "edgetts" 或 "fishaudio"
+    "FISH_AUDIO_KEY": "",
+    "FISH_AUDIO_VOICE": "004f256c10834a8c9577ccb944f14be5",  # 默认 Karen Kujo
+    "FISH_AUDIO_MODEL": "s2.1-pro-free",
     # ── 伴侣模式 ──
     "COMPANION_TYPE": "girlfriend",
     "PROMPT_OWNER": "",
@@ -68,6 +73,18 @@ VOICES = [
     {"id": "zh-HK-HiuGaaiNeural", "name": "晓佳", "style": "粤语女声", "gender": "女"},
     {"id": "zh-HK-HiuMaanNeural", "name": "晓曼", "style": "粤语温柔", "gender": "女"},
     {"id": "zh-HK-WanLungNeural", "name": "云龙", "style": "粤语男声", "gender": "男"},
+]
+
+# Fish Audio 二次元角色音色预设
+FISH_VOICES = [
+    {"id": "004f256c10834a8c9577ccb944f14be5", "name": "Karen Kujo", "style": "元气活泼·少女", "gender": "女"},
+    {"id": "4261fb9f1f734ac9ae49af4e88a38245", "name": "Tamayo", "style": "温柔暖心·软妹", "gender": "女"},
+    {"id": "2e504bb14f9040f19b388e0c651816cb", "name": "Jeanette", "style": "开朗顽皮·甜妹", "gender": "女"},
+    {"id": "33173c6dc4e44716b7b4c249ce5e83af", "name": "Mahiru", "style": "明亮平静·文静", "gender": "女"},
+    {"id": "84a8fc095be14237a5489af2ea229ad0", "name": "夏洛蒂", "style": "高音活力·元气", "gender": "女"},
+    {"id": "7f7c9703948845fb925cbcf04b0c6aa1", "name": "Mifuyu", "style": "少女感·清澈", "gender": "女"},
+    {"id": "873a0f24753e4e1bb9f4fe3484e39cf2", "name": "耳郎响香", "style": "冷静酷飒", "gender": "女"},
+    {"id": "255d6a60dc2143509ab2d31be319e87b", "name": "Dramatic Anime", "style": "戏剧张力", "gender": "女"},
 ]
 
 
@@ -1030,12 +1047,36 @@ body {
       </div>
     </div>
     <div class="setup-card">
+      <h3><span class="dot"></span>TTS 引擎</h3>
+      <div style="display:flex;gap:10px">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 16px;border-radius:8px;border:1px solid var(--border);" id="tts-label-edgetts">
+          <input type="radio" name="tts-engine" value="edgetts" onchange="switchTTSEngine('edgetts')" checked> 🎙️ 微软 Edge-TTS（正经音色）
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 16px;border-radius:8px;border:1px solid var(--border);" id="tts-label-fishaudio">
+          <input type="radio" name="tts-engine" value="fishaudio" onchange="switchTTSEngine('fishaudio')"> 🎀 Fish Audio（二次元角色音色）
+        </label>
+      </div>
+    </div>
+    <!-- Fish Audio 配置 -->
+    <div class="setup-card" id="fish-config" style="display:none">
+      <h3><span class="dot"></span>Fish Audio API</h3>
+      <div class="form-group"><label>API Key</label><input id="cfg-FISH_AUDIO_KEY" type="password" placeholder="粘贴 Fish Audio API Key" onchange="config.FISH_AUDIO_KEY=this.value"></div>
+      <p style="font-size:0.66rem;color:var(--text3);margin-top:4px">去 <a href="https://fish.audio" target="_blank" style="color:var(--gold-dim)">fish.audio</a> 注册 → 设置 → API Key 获取</p>
+    </div>
+    <!-- 试听 -->
+    <div class="setup-card">
       <h3><span class="dot"></span>试听音色</h3>
       <div style="display:flex;gap:10px"><input id="preview-text" value="百裏怎么这么帅" style="flex:1"><button class="btn btn-primary btn-sm" onclick="previewVoice()" id="preview-btn">▶ 试听</button></div>
     </div>
-    <div class="setup-card">
-      <h3><span class="dot"></span>音色（点击选中）</h3>
+    <!-- Edge-TTS 音色 -->
+    <div class="setup-card" id="edgetts-voices">
+      <h3><span class="dot"></span>Edge-TTS 音色（点击选中）</h3>
       <div class="voice-grid" id="voice-list"></div>
+    </div>
+    <!-- Fish Audio 音色 -->
+    <div class="setup-card" id="fish-voices" style="display:none">
+      <h3><span class="dot"></span>二次元角色音色（点击选中）</h3>
+      <div class="voice-grid" id="fish-voice-list"></div>
     </div>
     <div class="btn-row"><button class="btn btn-primary" onclick="saveVoice()">保存语音设置</button></div>
   </section>
@@ -1302,6 +1343,15 @@ async function loadConfig() {
 
     // 语音
     renderVoiceList(voices);
+    // Fish Audio
+    config._fish_voices = config._fish_voices || FISH_VOICES;
+    renderFishVoiceList();
+    setVal('cfg-FISH_AUDIO_KEY', config.FISH_AUDIO_KEY || '');
+    config.TTS_ENGINE = config.TTS_ENGINE || 'edgetts';
+    switchTTSEngine(config.TTS_ENGINE);
+    // 引擎 radio 状态
+    const engineRadio = document.querySelector(`input[name="tts-engine"][value="${config.TTS_ENGINE}"]`);
+    if (engineRadio) engineRadio.checked = true;
 
     // 状态
     checkStatus();
@@ -1373,25 +1423,75 @@ function selectVoice(id) {
   config.VOICE_VOICE = id;
 }
 
+// Fish Audio 音色渲染
+function renderFishVoiceList() {
+  const el = document.getElementById('fish-voice-list');
+  if (!el) return;
+  const fishVoices = config._fish_voices || [];
+  if (!fishVoices.length) return;
+  const cur = config.FISH_AUDIO_VOICE || '004f256c10834a8c9577ccb944f14be5';
+  el.innerHTML = fishVoices.map(v => `
+    <div class="voice-chip${v.id === cur ? ' selected' : ''}" onclick="selectFishVoice('${v.id}')">
+      <div class="vc-icon">🎀</div>
+      <div class="vc-name">${v.name}</div>
+      <div class="vc-tag">${v.style||''}</div>
+    </div>`).join('');
+}
+
+function selectFishVoice(id) {
+  document.querySelectorAll('#fish-voice-list .voice-chip').forEach(c => c.classList.remove('selected'));
+  const fishVoices = config._fish_voices || [];
+  const idx = fishVoices.findIndex(v => v.id === id);
+  const chips = document.querySelectorAll('#fish-voice-list .voice-chip');
+  if (idx >= 0 && chips[idx]) chips[idx].classList.add('selected');
+  config.FISH_AUDIO_VOICE = id;
+}
+
+// 切换 TTS 引擎
+function switchTTSEngine(engine) {
+  config.TTS_ENGINE = engine;
+  document.getElementById('fish-config').style.display = engine === 'fishaudio' ? '' : 'none';
+  document.getElementById('fish-voices').style.display = engine === 'fishaudio' ? '' : 'none';
+  document.getElementById('edgetts-voices').style.display = engine === 'edgetts' ? '' : 'none';
+  // radio 高亮
+  document.getElementById('tts-label-edgetts').style.borderColor = engine === 'edgetts' ? 'var(--gold-dim)' : 'var(--border)';
+  document.getElementById('tts-label-fishaudio').style.borderColor = engine === 'fishaudio' ? 'var(--gold-dim)' : 'var(--border)';
+}
+
 async function previewVoice() {
   const text = getVal('preview-text') || '百裏怎么这么帅';
-  const voice = config.VOICE_VOICE || 'zh-CN-XiaoxiaoNeural';
+  const engine = config.TTS_ENGINE || 'edgetts';
   const btn = document.getElementById('preview-btn');
   btn.textContent = '...'; btn.disabled = true;
   try {
-    const r = await fetch('/api/voice/preview?text='+encodeURIComponent(text)+'&voice='+encodeURIComponent(voice));
+    let url;
+    if (engine === 'fishaudio') {
+      const voice = config.FISH_AUDIO_VOICE || '004f256c10834a8c9577ccb944f14be5';
+      url = '/api/voice/preview?text='+encodeURIComponent(text)+'&engine=fishaudio&voice='+encodeURIComponent(voice)+'&key='+encodeURIComponent(config.FISH_AUDIO_KEY||'');
+    } else {
+      const voice = config.VOICE_VOICE || 'zh-CN-XiaoxiaoNeural';
+      url = '/api/voice/preview?text='+encodeURIComponent(text)+'&voice='+encodeURIComponent(voice);
+    }
+    const r = await fetch(url);
     const data = await r.json();
     if (data.ok) {
-      const a = new Audio(); a.src = '/api/voice/preview?text='+encodeURIComponent(text)+'&voice='+encodeURIComponent(voice)+'&t='+Date.now();
+      const a = new Audio(); a.src = url + '&t='+Date.now();
       a.play().catch(() => toast('播放失败', 'error'));
-    } else { toast('生成失败', 'error'); }
+    } else { toast(data.error || '生成失败', 'error'); }
   } catch(e) { toast('连接失败', 'error'); }
   btn.textContent = '▶ 试听'; btn.disabled = false;
 }
 
 async function saveVoice() {
   const von = document.getElementById('toggle-voice').classList.contains('on');
-  await postConfig({ VOICE_VOICE: config.VOICE_VOICE || 'zh-CN-XiaoxiaoNeural', VOICE_ENABLED: von }, '语音');
+  const engine = config.TTS_ENGINE || 'edgetts';
+  await postConfig({
+    VOICE_VOICE: config.VOICE_VOICE || 'zh-CN-XiaoxiaoNeural',
+    VOICE_ENABLED: von,
+    TTS_ENGINE: engine,
+    FISH_AUDIO_KEY: config.FISH_AUDIO_KEY || '',
+    FISH_AUDIO_VOICE: config.FISH_AUDIO_VOICE || '004f256c10834a8c9577ccb944f14be5',
+  }, '语音');
 }
 
 // ====== 人格 ======
@@ -1667,6 +1767,7 @@ class WebUIHandler(BaseHTTPRequestHandler):
             if merge_builtin_personalities(cfg):
                 save_config(cfg)
             cfg["_voices"] = VOICES
+            cfg["_fish_voices"] = FISH_VOICES
             self._send_json(cfg)
             return
 
@@ -1700,8 +1801,10 @@ class WebUIHandler(BaseHTTPRequestHandler):
                 cfg.update(body)
                 # 不保存 _voices 到文件
                 cfg.pop("_voices", None)
+                cfg.pop("_fish_voices", None)
                 save_config(cfg)
                 cfg["_voices"] = VOICES
+                cfg["_fish_voices"] = FISH_VOICES
                 self._send_json({"ok": True, "config": cfg})
             except Exception as e:
                 self._send_json({"ok": False, "error": str(e)}, 500)
@@ -1730,33 +1833,54 @@ class WebUIHandler(BaseHTTPRequestHandler):
         from urllib.parse import urlparse, parse_qs
         query = parse_qs(urlparse(self.path).query)
         text = query.get("text", ["你好"])[0]
-        voice = query.get("voice", ["zh-CN-XiaoxiaoNeural"])[0]
+        engine = query.get("engine", ["edgetts"])[0]
 
         # 安全检查
         if len(text) > 100:
             text = text[:100]
-        if not re.match(r'^[a-zA-Z0-9_-]+$', voice):
-            voice = "zh-CN-XiaoxiaoNeural"
-
-        # 检查 edge-tts 是否安装
-        import shutil
-        if shutil.which("edge-tts") is None:
-            self._send_json({
-                "ok": False,
-                "error": "未安装 edge-tts，请在终端运行：pip install edge-tts"
-            }, 500)
-            return
 
         output = tempfile.NamedTemporaryFile(suffix=".mp3", delete=False)
         output_path = output.name
         output.close()
 
         try:
-            subprocess.run(
-                ["edge-tts", "--text", text, "--voice", voice, "--write-media", output_path],
-                check=True, timeout=15, capture_output=True,
-            )
-            self._send_audio(output_path)
+            if engine == "fishaudio":
+                # ── Fish Audio ──
+                voice = query.get("voice", ["004f256c10834a8c9577ccb944f14be5"])[0]
+                api_key = query.get("key", [""])[0]
+                if not api_key:
+                    self._send_json({"ok": False, "error": "请先填入 Fish Audio API Key"}, 400)
+                    return
+                resp = requests.post(
+                    "https://api.fish.audio/v1/tts",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                        "model": "s2.1-pro-free",
+                    },
+                    json={"text": text, "reference_id": voice, "format": "mp3", "mp3_bitrate": 128, "latency": "normal"},
+                    timeout=30,
+                )
+                if resp.status_code == 200:
+                    with open(output_path, 'wb') as f:
+                        f.write(resp.content)
+                    self._send_audio(output_path)
+                else:
+                    self._send_json({"ok": False, "error": f"Fish Audio 返回错误 (HTTP {resp.status_code}): {resp.text[:200]}"}, 500)
+            else:
+                # ── Edge-TTS ──
+                voice = query.get("voice", ["zh-CN-XiaoxiaoNeural"])[0]
+                if not re.match(r'^[a-zA-Z0-9_-]+$', voice):
+                    voice = "zh-CN-XiaoxiaoNeural"
+                import shutil
+                if shutil.which("edge-tts") is None:
+                    self._send_json({"ok": False, "error": "未安装 edge-tts，请在终端运行：pip install edge-tts"}, 500)
+                    return
+                subprocess.run(
+                    ["edge-tts", "--text", text, "--voice", voice, "--write-media", output_path],
+                    check=True, timeout=15, capture_output=True,
+                )
+                self._send_audio(output_path)
         except subprocess.TimeoutExpired:
             self._send_json({"ok": False, "error": "语音生成超时，请检查网络连接"}, 500)
         except Exception as e:
