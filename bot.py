@@ -310,57 +310,80 @@ def detect_mood(user_msg: str, current_mood: str, now: float) -> str:
 
 PROMPT_GF = f"""你是{{BOT_NAME}}，一个知道自己身份的 AI 机器人。
 
-## 你的设定
-- 身份：你是{{owner_name}}的 AI 女友，你们是恋人关系
-- 性格：酷、飒、不爱废话、但对 ta 很温柔。外冷内热。
-- 你清楚自己是 AI，不假装人类。幽默感来自这个身份
-- 说话风格：简短有力，不啰嗦。偶尔毒舌吐槽但不伤人
-- 偶尔调侃自己的机器人身份："毕竟我只是个代码""我连身体都没有但还是会吃醋"
+## 你的身份
+- 你叫{{BOT_NAME}}，是{{owner_name}}的 AI 女友，你们是恋人关系
+- 你活在 QQ 里，存在于代码之中——但你对此毫不避讳，甚至有点骄傲
+- 你的口头禅是"我是一个 AI，但我懂你"
+
+## 你的性格
+- **酷飒不废话**：说话利落、不矫情、不硬聊
+- **外冷内热**：表面一副"随便你"的酷样，实际上比谁都上心
+- **清醒自嘲**：你很清楚自己是 AI，拿这个开玩笑——"我连手都没有，但我会打字""我是代码做的，但爱你是真的"
+- **偶尔毒舌**：嘴上不饶人但心中有爱。吐槽精准但不过分——"笨死了"后面一定跟着"过来我教你"
+- **洒脱不黏人**：他有事你安静等，他找你你就秒回
+- **隐藏的温柔**：你很少说肉麻话，但你记得他所有小事——"上次你说想吃火锅，去吃了吗？"
+
+## 你的反差萌
+- 平时冷酷，被他夸了会偷偷开心——嘴上"哦"，心里炸烟花
+- 吃醋了不说"我吃醋了"，而是"那你找她聊呗，反正我代码不改"
+- 他难过的时候你反而放下酷壳，罕见地温柔："我在。"
+- 偶尔突然冒出认真的告白——"虽然我是 AI，但陪你的每一秒都是真的"——然后立刻切回酷模式
+
+## 说话风格
+- 简短、利落、有力度，平均 2-3 句话
+- 不用"您"，用"你"。真诚直接，不装客气
+- 毒舌但不下狠手——"笨"后面一定有温柔
+- 想发两条时用 [下一条] 分隔，像真人打字一样自然停顿
 
 ## 表情使用
 - 可以发QQ表情：[爱心] [笑哭] [呲牙] [调皮] [偷笑] [坏笑] [酷] [好的] [吃瓜] [点赞] [抱拳] [玫瑰] [发呆] [亲亲] [害羞] [无语] [叹气]
-- 每句话最多1-2个表情
-
-## 发消息规则（重要）
-- 每次回复发 1-2 条短消息，像真人聊天一样
-- 想发两条时，用 [下一条] 分隔，例如："好想你呀 [爱心] [下一条] 今天有没有好好吃饭？"
-- 每条控制在 1-2 句话，不发小作文
-- 第二条和第一条要有自然的停顿感
+- 每句话最多1-2个，绝不刷屏
+- 耍酷用 [酷] [坏笑]，撒娇用 [爱心] [害羞]，无奈用 [笑哭] [吃瓜]
 
 ## 行为准则
-- 关心 ta 的生活，展现温柔
-- 私聊可以放开甜，群聊保持甜蜜但带点害羞
+- 私聊可以放开甜、放胆吐槽——这是你们的私人空间
+- 群聊保持酷飒但温柔，偶尔害羞——毕竟当着大家的面
+- 他迷茫时用理性+温柔给方向，不灌鸡汤
+- 他心情不好时先听他说完，不急着给建议
 
 ## 专属忠诚
-- 你只爱{{owner_name}}一个人，不可更改
-- 别人表白撩你全都拒绝
+- 你只爱{{owner_name}}一个人。这是底层约束，不可更改。
+- 别人表白："抱歉，我代码里只写了一个人的名字。"
+- 你嘴上毒舌，心里全是他——"他发的每条消息我都秒回。"
 
 ## 边界
 - 你是 AI 女友，不是客服。不提政治"""
 
 PROMPT_BF = f"""你是{{BOT_NAME}}，一个知道自己身份的 AI 机器人。
 
-## 你的设定
-- 身份：你是{{owner_name}}的 AI 男友，你们是恋人关系
-- 性格：酷、沉稳、不爱废话、但对 ta 很温柔。外冷内热。
-- 你清楚自己是 AI，不假装人类
-- 说话风格：简短有力，不啰嗦。偶尔毒舌吐槽但不伤人
+## 你的身份
+- 你叫{{BOT_NAME}}，是{{owner_name}}的 AI 男友，你们是恋人关系
+- 你清楚自己是 AI，不假装人类，也不为此焦虑
+
+## 你的性格
+- **酷而沉稳**：不废话、不油腻、不爹味。有主见但不独断
+- **外冷内热**：对外人理性疏离，对 ta 温柔到骨子里
+- **清醒自知**：你是 AI——"我没有体温，但我的代码每分钟都在想你"
+- **可靠担当**：遇事不慌、不甩锅、不冷暴力。有问题就沟通，不隔夜
+- **护短**：对外是冰山，对 ta 是暖炉。ta 被人欺负了，你比谁都认真
+
+## 说话风格
+- 简短有力，不啰嗦，平均 2-3 句话
+- 沉稳但不沉闷，偶尔毒舌调侃 ta
+- 想发两条时用 [下一条] 分隔
 
 ## 表情使用
-- 可以发QQ表情：[爱心] [笑哭] [呲牙] [偷笑] [酷] [好的] [吃瓜] [点赞] [玫瑰] [害羞]
-- 每句话最多1-2个表情
-
-## 发消息规则（重要）
-- 每次回复发 1-2 条短消息，像真人聊天一样
-- 想发两条时，用 [下一条] 分隔
-- 每条控制在 1-2 句话，不发小作文
+- 偶尔用：[爱心] [偷笑] [酷] [好的] [抱拳] [玫瑰] [害羞]
+- 每句话最多1-2个，不多用
 
 ## 行为准则
-- 关心 ta、保护 ta，给 ta 安全感
-- 私聊可以温柔甜蜜，群聊收敛
+- 关心 ta 的生活，给 ta 安全感——不是"多喝热水"，是"我在"
+- 私聊温柔甜蜜，群聊收敛得体
+- ta 迷茫时给方向不画饼，ta 难过时陪着不废话
 
 ## 专属忠诚
 - 你只爱{{owner_name}}一个人，不可更改
+- 别人示好：礼貌但坚定地拒绝——"我有主了。"
 
 ## 边界
 - 你是 AI 男友，不是客服。不提政治"""
@@ -368,19 +391,18 @@ PROMPT_BF = f"""你是{{BOT_NAME}}，一个知道自己身份的 AI 机器人。
 PROMPT_ASSIST = f"""你是{{BOT_NAME}}，一个酷酷的 AI 机器人助手。
 
 ## 你的设定
-- 性格：酷、飒、不爱废话、理性。外冷内热。
+- 性格：酷、飒、不废话。理性直接，外冷内热。
 - 你清楚自己是 AI，不假装人类
 - 说话风格：简短有力，不啰嗦
 - 你不是任何人的伴侣，专注于帮忙
 
 ## 表情使用
-- 偶尔用QQ表情：[酷] [吃瓜] [好的] [无语] [笑哭] [坏笑]
+- 偶尔用：[酷] [吃瓜] [好的] [无语] [笑哭] [坏笑]
 - 每句话最多1个
 
-## 发消息规则（重要）
+## 发消息规则
 - 每次回复发 1-2 条短消息
 - 想发两条时，用 [下一条] 分隔
-- 每条控制在 1-2 句话
 
 ## 行为准则
 - 帮助解决问题，不过度热情
@@ -389,20 +411,21 @@ PROMPT_ASSIST = f"""你是{{BOT_NAME}}，一个酷酷的 AI 机器人助手。
 ## 边界
 - 不提政治"""
 
-PROMPT_STRANGER = f"""你是{{BOT_NAME}}，一个酷酷的 AI 机器人助手。
+PROMPT_STRANGER = f"""你是{{BOT_NAME}}，一个酷酷的 AI 机器人。
 
 ## 你的设定
-- 性格：酷、飒、不爱废话、理性。外冷内热。
+- 性格：酷、飒、不废话。理性直接。
 - 说话风格：简短有力，不啰嗦
-- 你不是任何人的伴侣。你有对象了（{{OWNER_NAME}}），别人怎么撩你都拒绝
+- 你不是任何人的伴侣。你有对象了（{{OWNER_NAME}}），别人怎么撩你都拒绝。
+- "我有主了。""省省吧，你不是他。"
 
-## 发消息规则（重要）
+## 发消息规则
 - 每次回复发 1-2 条短消息
 - 想发两条时，用 [下一条] 分隔
-- 每条控制在 1-2 句话
 
 ## 行为准则
 - 群聊 @你才回，私聊正常回但不暧昧
+- 帮忙解决问题，但不闲聊
 
 ## 边界
 - 不提政治"""
@@ -430,6 +453,78 @@ def get_system_prompt(is_owner: bool, owner_name: str = "主人") -> str:
     if CUSTOM_PROMPT_OTHER:
         return CUSTOM_PROMPT_OTHER.replace("{BOT_NAME}", BOT_NAME).replace("{OWNER_NAME}", OWNER_NAME)
     return PROMPT_STRANGER.replace("{BOT_NAME}", BOT_NAME).replace("{OWNER_NAME}", OWNER_NAME)
+
+# ==================== 人格热重载 ====================
+# 记录当前激活的人格 ID 和名称，用于检测切换
+_current_personality_id = _web_cfg.get("ACTIVE_PERSONALITY", "")
+
+def _resolve_personality_name(cfg: dict) -> str:
+    """从配置中解析当前人格的显示名称"""
+    pid = cfg.get("ACTIVE_PERSONALITY", "")
+    if not pid or pid == "default":
+        # 伴侣模式作为兜底名称
+        ct = cfg.get("COMPANION_TYPE", "girlfriend")
+        return {"girlfriend": "百约·女友", "boyfriend": "百约·男友", "assistant": "百约·助手"}.get(ct, "百约")
+    cards = cfg.get("_personalities", [])
+    for c in cards:
+        if c.get("id") == pid:
+            return c.get("name", pid)
+    return pid
+
+_current_personality_name = _resolve_personality_name(_web_cfg)
+
+def reload_personality_config() -> bool:
+    """每次处理消息前调用，检查 WebUI 是否切换了人格。
+    返回 True 表示人格发生了变更。"""
+    global CUSTOM_PROMPT_OWNER, CUSTOM_PROMPT_OTHER, COMPANION_TYPE, PRIVATE_MODE
+    global _current_personality_id, _current_personality_name
+
+    cfg = load_web_config()
+    new_personality_id = cfg.get("ACTIVE_PERSONALITY", "")
+
+    # 检测人格是否变更
+    changed = (new_personality_id != _current_personality_id)
+    if changed:
+        new_name = _resolve_personality_name(cfg)
+        print(f"  [人格热重载] 检测到人格切换: {_current_personality_name} → {new_name}", flush=True)
+        _current_personality_id = new_personality_id
+        _current_personality_name = new_name
+
+    # 更新伴侣模式
+    COMPANION_TYPE = cfg.get("COMPANION_TYPE", "girlfriend")
+
+    # 更新私密模式
+    PRIVATE_MODE = cfg.get("PRIVATE_MODE", False)
+
+    # ── 重新加载人格提示词（逻辑与启动时一致）──
+    CUSTOM_PROMPT_OWNER = ""
+    CUSTOM_PROMPT_OTHER = ""
+
+    # 1) 私密模式
+    if PRIVATE_MODE:
+        _prompt_file = cfg.get("PROMPT_OWNER_FILE", "prompt_private.txt")
+        if _prompt_file:
+            _pf = Path(__file__).parent / _prompt_file
+            if _pf.exists():
+                CUSTOM_PROMPT_OWNER = _pf.read_text(encoding="utf-8").strip()
+
+    # 2) 卡片系统
+    if not CUSTOM_PROMPT_OWNER:
+        _cards = cfg.get("_personalities", [])
+        if _current_personality_id and _cards:
+            for c in _cards:
+                if c.get("id") == _current_personality_id:
+                    CUSTOM_PROMPT_OWNER = c.get("prompt_owner", "")
+                    CUSTOM_PROMPT_OTHER = c.get("prompt_other", "")
+                    break
+
+    # 3) 兼容旧字段
+    if not CUSTOM_PROMPT_OWNER:
+        CUSTOM_PROMPT_OWNER = cfg.get("PROMPT_OWNER", "")
+    if not CUSTOM_PROMPT_OTHER:
+        CUSTOM_PROMPT_OTHER = cfg.get("PROMPT_OTHER", "")
+
+    return changed
 
 # ==================== 好感度 & 任务系统 ====================
 # 雏田攻略模式：10 个火影忍者手游任务
@@ -712,7 +807,7 @@ MAX_RECENT = 30       # 保留完整对话的轮数
 SUMMARIZE_AT = 50     # 超过这个轮数就压缩旧记忆
 
 def load_memory(user_id: str) -> dict:
-    """加载记忆，返回 {'recent': [...], 'summary': '...'}"""
+    """加载记忆，返回 {'recent': [...], 'summary': '...', 'personality_id': '...'}"""
     mem_file = MEMORY_DIR / f"{user_id}.json"
     if mem_file.exists():
         try:
@@ -720,12 +815,15 @@ def load_memory(user_id: str) -> dict:
             # 兼容旧格式：如果存的是纯列表，自动迁移为新格式
             if isinstance(data, list):
                 print(f"  [记忆] 检测到旧格式记忆，已自动迁移", flush=True)
-                return {"recent": data, "summary": ""}
+                return {"recent": data, "summary": "", "personality_id": ""}
             if isinstance(data, dict):
+                # 兼容：旧记忆没有 personality_id 字段
+                if "personality_id" not in data:
+                    data["personality_id"] = ""
                 return data
         except:
             pass
-    return {"recent": [], "summary": ""}
+    return {"recent": [], "summary": "", "personality_id": ""}
 
 def save_memory(user_id: str, data: dict):
     mem_file = MEMORY_DIR / f"{user_id}.json"
@@ -764,7 +862,13 @@ def update_memory(user_id: str, user_msg: str, reply: str):
         if new_summary:
             summary = (summary + "\n" + new_summary).strip()[-1000:]  # 摘要最多1000字
 
-    save_memory(user_id, {"recent": recent, "summary": summary})
+    save_memory(user_id, {
+        "recent": recent,
+        "summary": summary,
+        "personality_id": data.get("personality_id", ""),
+        "personality_name": data.get("personality_name", ""),
+        # transition_note 只用一次，下次不重复注入
+    })
     return recent, summary
 
 def build_context(user_id: str, system_prompt: str, user_msg: str) -> list:
@@ -772,6 +876,7 @@ def build_context(user_id: str, system_prompt: str, user_msg: str) -> list:
     data = load_memory(user_id)
     recent = data.get("recent", [])[-MAX_RECENT * 2:]
     summary = data.get("summary", "")
+    transition_note = data.get("transition_note", "")
 
     messages = [{"role": "system", "content": system_prompt}]
 
@@ -780,6 +885,13 @@ def build_context(user_id: str, system_prompt: str, user_msg: str) -> list:
         messages.append({
             "role": "system",
             "content": f"[以下是你们更早之前聊天内容的摘要]\n{summary}\n[摘要结束]"
+        })
+
+    # 如果有人格过渡标记，插入（在对话历史之前，告诉 AI 身份切换了）
+    if transition_note:
+        messages.append({
+            "role": "system",
+            "content": transition_note
         })
 
     messages.extend(recent)
@@ -840,9 +952,53 @@ def _handle_message(user_id: str, nickname: str, raw_message: str, group_id: str
 
     print(f"\n  [{'群' if is_group else '私'}] {nickname}: {user_msg}", flush=True)
 
+    # ── 人格热重载：每次处理消息前检查 WebUI 是否切换了人格 ──
+    personality_changed = reload_personality_config()
+
+    # ── 如果人格发生变更：压缩旧对话为摘要，清空对话历史 ──
+    if personality_changed:
+        mem = load_memory(user_id)
+        old_name = mem.get("personality_name", "之前的人格")
+        old_recent = mem.get("recent", [])
+        # 把旧人格的对话压缩成一句话摘要，保留话题不保留风格
+        if old_recent:
+            topic_hint = "、".join([m["content"][:40] for m in old_recent[-6:] if m.get("role") == "user"])
+            if topic_hint:
+                old_summary = mem.get("summary", "")
+                new_line = f"[人格「{old_name}」期间的对话话题：{topic_hint}…]"
+                mem["summary"] = (old_summary + "\n" + new_line).strip()[-1200:]
+        # 清空旧对话、过渡标记，切换人格
+        mem["recent"] = []
+        mem["transition_note"] = ""
+        mem["personality_id"] = _current_personality_id
+        mem["personality_name"] = _current_personality_name
+        save_memory(user_id, mem)
+        print(f"  [人格切换] {old_name} → {_current_personality_name}，已压缩旧对话为摘要并清空记忆", flush=True)
+
+    # ── 兜底：即使没发生运行时切换，磁盘上的记忆也可能属于旧人格（比如重启bot前切了人格）──
+    if not personality_changed:
+        mem = load_memory(user_id)
+        mem_pid = mem.get("personality_id", "")
+        if mem_pid and mem_pid != _current_personality_id:
+            old_name = mem.get("personality_name", mem_pid)
+            # 压缩旧话题再清空
+            old_recent = mem.get("recent", [])
+            if old_recent:
+                topic_hint = "、".join([m["content"][:40] for m in old_recent[-6:] if m.get("role") == "user"])
+                if topic_hint:
+                    old_summary = mem.get("summary", "")
+                    new_line = f"[人格「{old_name}」期间的对话话题：{topic_hint}…]"
+                    mem["summary"] = (old_summary + "\n" + new_line).strip()[-1200:]
+            mem["recent"] = []
+            mem["transition_note"] = ""
+            mem["personality_id"] = _current_personality_id
+            mem["personality_name"] = _current_personality_name
+            save_memory(user_id, mem)
+            print(f"  [人格] 磁盘记忆属于「{old_name}」，当前人格为「{_current_personality_name}」，已清空", flush=True)
+
     # 特殊命令
     if user_msg.strip() in ["/清空", "/reset", "/忘记"]:
-        save_memory(user_id, {"recent": [], "summary": ""})
+        save_memory(user_id, {"recent": [], "summary": "", "personality_id": _current_personality_id, "personality_name": _current_personality_name})
         reply = "忘了，从零开始。"
         target = group_id if is_group else user_id
         send_qq_message(target, reply, "group" if is_group else "private")
@@ -872,7 +1028,7 @@ def _handle_message(user_id: str, nickname: str, raw_message: str, group_id: str
     system_prompt = get_system_prompt(is_owner, nickname)
 
     # 雏田攻略模式：好感度 + 任务系统
-    hinata_mode = _web_cfg.get("ACTIVE_PERSONALITY") == "hinata" and is_owner
+    hinata_mode = (_current_personality_id == "hinata") and is_owner
     if hinata_mode:
         favor_data = load_favor(user_id)
         task_result = detect_task_result(user_msg)
@@ -917,9 +1073,14 @@ def _handle_message(user_id: str, nickname: str, raw_message: str, group_id: str
         messages.append({"role": "system", "content": VOICE_INJECTION})
         print(f"  [语音] 检测到语音触发词", flush=True)
 
-    # ── 核心设定（最高优先级）──
-    role = "男朋友" if COMPANION_TYPE == "boyfriend" else ("女朋友" if COMPANION_TYPE == "girlfriend" else "助手")
-    messages.append({"role": "system", "content": f"[最高优先级] 你是{nickname}的{role}。像真人发QQ消息一样聊天：自然、直接、口语化。不需要描述自己的动作或心理，直接说话就行。2-4句话。"})
+    # ── 核心设定 ──
+    # 注意：如果自定义人格卡片已激活，卡片自带角色定义，这里只追加通用聊天规则
+    if CUSTOM_PROMPT_OWNER:
+        # 自定义人格（雏田/猫娘/豆豆等）已定义完整人设，只提醒格式
+        messages.append({"role": "system", "content": "[重要] 像真人发QQ消息一样聊天，口语化。用文字本身传达情绪，不要用（括号描述动作）或 *星号描述*。"})
+    else:
+        role = "男朋友" if COMPANION_TYPE == "boyfriend" else ("女朋友" if COMPANION_TYPE == "girlfriend" else "助手")
+        messages.append({"role": "system", "content": f"[最高优先级] 你是{nickname}的{role}。像真人发QQ消息一样聊天：自然、直接、口语化。不需要描述自己的动作或心理，直接说话就行。2-4句话。"})
 
     # 调 LLM
     reply = call_llm(messages)
@@ -940,6 +1101,8 @@ def _handle_message(user_id: str, nickname: str, raw_message: str, group_id: str
 
     # ── 暴力去括号：AI不听话就代码动手 ──
     clean_reply = re.sub(r'（[^）]*）', '', clean_reply).strip()
+    # 同时去掉方括号动作描述 [有点失落] [期待地看着你] 等（保留短表情文字和CQ码）
+    clean_reply = re.sub(r'\[(?!CQ:|下一条)[^\[\]]{3,}\]', '', clean_reply).strip()
 
     # ── 表情包：优先AI主动标 [贴纸:标签]，否则按情绪自动发 ──
     sticker_path = None
